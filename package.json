@@ -1,0 +1,28 @@
+{
+  "name": "clay-log",
+  "version": "0.0.1",
+  "description": "An isomorphic logging module for Clay projects",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clay/clay-log.git"
+  },
+  "keywords": [
+    "clay",
+    "amphora",
+    "log",
+    "logging"
+  ],
+  "author": "New York Media",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/clay/clay-log/issues"
+  },
+  "homepage": "https://github.com/clay/clay-log#readme",
+  "dependencies": {
+    "pino": "^4.7.1"
+  }
+}
