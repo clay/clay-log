@@ -10,15 +10,19 @@ var logger;
  * @param  {String} [name='' }]            [description]
  * @return {[type]}          [description]
  */
-function init({ name = '', pretty = false }) {
-  var pretty = pino.pretty({
-    levelFirst: true
-  })
-  pretty.pipe(process.stdout)
+function init({ name = '', prettyPrint = false }) {
+  let output = process.stdout;
+
+  if (prettyPrint) {
+    output = pino.pretty({
+      levelFirst: true
+    });
+    output.pipe(process.stdout);
+  }
 
   logger = pino({
     name
-  }, pretty);
+  }, output);
 
   return log();
 }

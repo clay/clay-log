@@ -11,7 +11,8 @@
 const lib = require('./');
 
 lib.init({
-  name: 'Testing'
+  name: 'Testing',
+  prettyPrint: true // <----- CHANG THIS TO FALSE TO SEE WHAT ELK WOULD TAKE IN
 });
 
 var log = lib.meta({
