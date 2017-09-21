@@ -69,7 +69,7 @@ function log(instanceLog) {
       level = 'error';
     }
 
-    if (!level || !msg) {d
+    if (!level || !msg) {
       instanceLog.error(new Error('level or msg arguments required'));
       return;
     }
