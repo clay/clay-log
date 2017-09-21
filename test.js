@@ -133,12 +133,10 @@ describe(dirname, function () {
       var fakeLogInstance = {
           error: sinon.stub()
         },
-        log = fn(fakeLogInstance),
-        missingArgsError = new Error('level or msg arguments required');
+        log = fn(fakeLogInstance);
 
       log();
       sinon.assert.calledOnce(fakeLogInstance.error);
-      sinon.assert.calledWith(fakeLogInstance.error, missingArgsError);
     });
   });
 });
