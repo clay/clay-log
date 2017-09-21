@@ -1,16 +1,20 @@
 'use strict';
 
-const pino = require('pino');
-
-var logger; // Will be overwritten during setup
+var pino = require('pino'), // Can be overwritten for testing
+  logger; // Will be overwritten during setup
 
 /**
  * [init description]
- * @param  {String} [name='' }]            [description]
+ * @param  {Object} args
  * @return {[type]}          [description]
  */
-function init({ name = '', prettyPrint = false, meta = undefined }) {
-  let output = process.stdout;
+function init(args) {
+  if (!args || !Object.keys(args).length || !args.name) {
+    throw new Error('Init must be called with `name` property');
+  }
+
+  let { name = '', prettyPrint = false, meta = undefined } = args,
+    output = process.stdout;
 
   if (prettyPrint) {
     output = pino.pretty({
@@ -42,7 +46,7 @@ function meta(options) {
     return log(logger.child(options));
   }
 
-  return log(logger);
+  throw new Error('Clay Log: `meta` function requires object argument');
 }
 
 /**
@@ -51,7 +55,7 @@ function meta(options) {
  * @return {[type]}
  */
 function log(instanceLog) {
-  return function (level = 'info', msg = '', data = {}) {
+  return function (level, msg = '', data = {}) {
     if (level instanceof Error) {
       msg = level;
       level = 'error';
@@ -59,6 +63,7 @@ function log(instanceLog) {
 
     if (!level || !msg) {
       instanceLog.error(new Error('level or msg arguments required'));
+      return;
     }
 
     instanceLog.level = level; // Make sure level is set each time
@@ -66,6 +71,15 @@ function log(instanceLog) {
   };
 }
 
+/**
+ * [setLogger description]
+ * @param {[type]} overwrite [description]
+ */
+function setLogger(overwrite) {
+  pino = overwrite;
+}
+
 module.exports.init = init;
 module.exports.meta = meta;
 module.exports.log = log;
+module.exports.setLogger = setLogger; // For testing
