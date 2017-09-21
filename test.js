@@ -11,7 +11,6 @@ describe(dirname, function () {
     childSpy = sinon.spy(),
     fakeLog = createFakeLogger();
 
-
   function createFakeLogger() {
     var fakeLog = sinon.stub().returns({
       child: childSpy

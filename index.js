@@ -69,7 +69,7 @@ function log(instanceLog) {
       level = 'error';
     }
 
-    if (!level || !msg) {
+    if (!level || !msg) {d
       instanceLog.error(new Error('level or msg arguments required'));
       return;
     }
@@ -89,5 +89,7 @@ function setLogger(overwrite) {
 
 module.exports.init = init;
 module.exports.meta = meta;
+
+// For testing
 module.exports.log = log;
-module.exports.setLogger = setLogger; // For testing
+module.exports.setLogger = setLogger;
