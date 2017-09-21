@@ -4,7 +4,8 @@
   "description": "An isomorphic logging module for Clay projects",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint --max-warnings 0 index.js"
   },
   "repository": {
     "type": "git",
@@ -24,5 +25,10 @@
   "homepage": "https://github.com/clay/clay-log#readme",
   "dependencies": {
     "pino": "^4.7.1"
+  },
+  "devDependencies": {
+    "eslint": "^4.7.1",
+    "mocha": "^3.5.3",
+    "sinon": "^3.3.0"
   }
 }

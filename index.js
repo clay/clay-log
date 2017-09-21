@@ -1,16 +1,15 @@
-'use strict'
+'use strict';
 
-const pino = require('pino'),
-  pkg = require('./package.json');
+const pino = require('pino');
 
-var logger;
+var logger; // Will be overwritten during setup
 
 /**
  * [init description]
  * @param  {String} [name='' }]            [description]
  * @return {[type]}          [description]
  */
-function init({ name = '', prettyPrint = false }) {
+function init({ name = '', prettyPrint = false, meta = undefined }) {
   let output = process.stdout;
 
   if (prettyPrint) {
@@ -20,11 +19,17 @@ function init({ name = '', prettyPrint = false }) {
     output.pipe(process.stdout);
   }
 
+  // Set the logger
   logger = pino({
     name
   }, output);
 
-  return log();
+  // If meta data was passed in for all logging, let's add it
+  if (meta && Object.keys(meta).length) {
+    logger = logger.child(meta);
+  }
+
+  return log(logger);
 }
 
 /**
@@ -33,15 +38,17 @@ function init({ name = '', prettyPrint = false }) {
  * @return {[type]}         [description]
  */
 function meta(options) {
-  return log(logger.child(options));
+  if (options && Object.keys(options).length) {
+    return log(logger.child(options));
+  }
+
+  return log(logger);
 }
 
 /**
  * Call the proper log level
- * @param  {[type]} level     [description]
- * @param  {[type]} msg       [description]
- * @param  {Object} [data={}] [description]
- * @return {[type]}           [description]
+ * @param  {[type]} instanceLog
+ * @return {[type]}
  */
 function log(instanceLog) {
   return function (level = 'info', msg = '', data = {}) {
@@ -56,7 +63,7 @@ function log(instanceLog) {
 
     instanceLog.level = level; // Make sure level is set each time
     instanceLog[level](data, msg);
-  }
+  };
 }
 
 module.exports.init = init;
