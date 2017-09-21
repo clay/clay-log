@@ -4,9 +4,10 @@ var pino = require('pino'), // Can be overwritten for testing
   logger; // Will be overwritten during setup
 
 /**
- * [init description]
+ * Initialize the logger.
+ *
  * @param  {Object} args
- * @return {[type]}          [description]
+ * @return {Function}
  */
 function init(args) {
   if (!args || !Object.keys(args).length || !args.name) {
@@ -37,9 +38,11 @@ function init(args) {
 }
 
 /**
- * [meta description]
- * @param  {[type]} options [description]
- * @return {[type]}         [description]
+ * Return a new logging instance with associated metadata
+ * on each log line
+ *
+ * @param  {Object} options
+ * @return {Function}
  */
 function meta(options) {
   if (options && Object.keys(options).length) {
@@ -50,12 +53,17 @@ function meta(options) {
 }
 
 /**
- * Call the proper log level
- * @param  {[type]} instanceLog
- * @return {[type]}
+ * Return an instance of a logger which is ready to be
+ * used. Errors get logged as errors, otherwise you need to
+ * call the appropriate level
+ *
+ * i.e. log('info', 'some message', { otherData: 1});
+ *
+ * @param  {Object} instanceLog
+ * @return {Function}
  */
 function log(instanceLog) {
-  return function (level, msg = '', data = {}) {
+  return function (level, msg, data = {}) {
     if (level instanceof Error) {
       msg = level;
       level = 'error';
