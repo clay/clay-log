@@ -21,24 +21,40 @@ The purpose of this logging module is to wrap the instantiation of Pino for your
 Instantiate the `clay-log` module.
 
 ```
-EXAMPLE
+const clayLog = require('clay-log');
+
+var log = clayLog.init({
+  name: 'amphora'
+});
+
+logger('info', 'some cool message', { additional: 'info' });
 ```
 
-Pretty printing is controlled by an environment variable
-```
-EXAMPLE PRETTY VS NON-PRETTY PRINTING
-```
-
-Attach metadata associated with each line. Handy for environment, version number, etc.
+Want to attach some piece of data to every log? Use the `meta` property. It accepts an Object, like so:
 
 ```
-ADD META API
+var log = clayLog.init({
+  name: 'amphora',
+  meta: {
+    important: 'information'
+  }
+});
 ```
 
-### API Design
-- Env var specifies pretty printing vs normal printing for consumers
-- Specify level as first string
-- Second string defaults to the message that is pretty printed.
-  - Only accepts one string
-- Third arg is an object which will be added to the logging
-- In production, stdout is piped to a transport. Transport is not part of repo/API
+Maybe you're wanting to get a new instance of a logger with its own associated metadata? Use the `meta` method. It accepts an Object as an argument and will spawn a new logger.
+
+```
+var loggerOne = clayLog.init({
+  name: 'amphora',
+  meta: {
+    important: 'information'
+  }
+});
+
+var loggerTwo = clayLog.meta({ another: 'piece of info' });
+
+loggerOne('info', 'some cool message', { additional: 'info' });
+loggerTwo('info', 'some different cool message');
+```
+
+Pretty printing is controlled by an environment variable. By setting `process.env.CLAY_LOG_PRETTY` the logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
