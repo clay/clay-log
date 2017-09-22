@@ -52,9 +52,11 @@ describe(dirname, function () {
     });
 
     it('calls pino.pretty function if `prettyPrint` is set to true', function () {
+      process.env.CLAY_LOG_PRETTY = true;
       fn({ name: 'test', prettyPrint: true });
       sinon.assert.calledOnce(fakeLog.pretty);
       sinon.assert.calledOnce(pipeSpy);
+      process.env.CLAY_LOG_PRETTY = undefined;
     });
 
     it('calls pino.child function if `meta` object is passed in', function () {

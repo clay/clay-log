@@ -14,13 +14,11 @@ function init(args) {
     throw new Error('Init must be called with `name` property');
   }
 
-  let { name = '', prettyPrint = false, meta = undefined } = args,
+  let { name = '', meta = undefined } = args,
     output = process.stdout;
 
-  if (prettyPrint) {
-    output = pino.pretty({
-      levelFirst: true
-    });
+  if (process.env.CLAY_LOG_PRETTY) {
+    output = pino.pretty({levelFirst: true});
     output.pipe(process.stdout);
   }
 
