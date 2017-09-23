@@ -1,4 +1,6 @@
 # Clay Log
+
+[![Greenkeeper badge](https://badges.greenkeeper.io/clay/clay-log.svg)](https://greenkeeper.io/)
 > An ismorphic logging module for Clay projects built around [PinoJS](https://github.com/pinojs/pino)
 
 ## Why use Clay Log?
