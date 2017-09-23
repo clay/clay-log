@@ -9,14 +9,14 @@ The purpose of this logging module is to wrap the instantiation of Pino for your
   - Amphora
   - Amphora Renderers (Amphora HTML)
   - Amphora plugins (Amphora Search)
-  - Clay-related microservices
+  - Clay-related microservicestog
   - `model.js` files
 - Client-side
   - Kiln
   - Kiln plugins (Clay Space Edit)
   - `model.js` files
 
-## API
+## Setup
 
 Instantiate the `clay-log` module.
 
@@ -56,5 +56,36 @@ var loggerTwo = clayLog.meta({ another: 'piece of info' });
 loggerOne('info', 'some cool message', { additional: 'info' });
 loggerTwo('info', 'some different cool message');
 ```
+
+## Usage
+
+Once you have a logging instance you're free to begin logging. Logging levels are the same as the default PinoJS levels:
+
+  - `info`
+  - `trace`
+  - `debug`
+  - `warn`
+  - `error`
+
+To use simply do the following:
+
+```
+var loggingInstance = clayLog.init({
+  name: 'coolClayProject',
+  meta: {
+    important: 'information'
+  }
+});
+
+loggingInstance('info', 'my cool message!', { additional: 'info' });
+
+```
+
+The arguments are in the following order:
+1. Logging level
+2. Message (String)
+3. Accompanying log information (Object)
+
+## Pretty Printing
 
 Pretty printing is controlled by an environment variable. By setting `process.env.CLAY_LOG_PRETTY` the logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
