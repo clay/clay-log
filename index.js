@@ -14,7 +14,8 @@ function init(args) {
     throw new Error('Init must be called with `name` property');
   }
 
-  let { name = '', meta = undefined } = args,
+  var name = args.name || '',
+    meta = args.meta || undefined,
     output = process.stdout;
 
   if (process.env.CLAY_LOG_PRETTY) {
@@ -24,7 +25,7 @@ function init(args) {
 
   // Set the logger
   logger = pino({
-    name
+    name: name
   }, output);
 
   // If meta data was passed in for all logging, let's add it
@@ -61,7 +62,9 @@ function meta(options) {
  * @return {Function}
  */
 function log(instanceLog) {
-  return function (level, msg, data = {}) {
+  return function (level, msg, data) {
+    data = data || {};
+
     if (level instanceof Error) {
       msg = level;
       level = 'error';
