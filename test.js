@@ -56,7 +56,7 @@ describe(dirname, function () {
       fn({ name: 'test', prettyPrint: true });
       sinon.assert.calledOnce(fakeLog.pretty);
       sinon.assert.calledOnce(pipeSpy);
-      process.env.CLAY_LOG_PRETTY = undefined;
+      delete process.env.CLAY_LOG_PRETTY;
     });
 
     it('calls pino.child function if `meta` object is passed in', function () {
@@ -138,6 +138,18 @@ describe(dirname, function () {
 
       log();
       sinon.assert.calledOnce(fakeLogInstance.error);
+    });
+  });
+
+  describe('getLogger', function () {
+    const fn = lib[this.title];
+
+    it('returns the logger', function () {
+      var fakeLogger = sandbox.stub().returns('hello');
+
+      lib.setLogger(fakeLogger);
+      lib.init({name: 'testing'});
+      expect(fn()).to.equal('hello');
     });
   });
 });

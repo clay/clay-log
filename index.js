@@ -16,7 +16,7 @@ function init(args) {
     throw new Error('Init must be called with `name` property');
   }
 
-  name = args.name || '';
+  name = args.name;
   meta = args.meta || undefined;
 
   if (process.env.CLAY_LOG_PRETTY) {
@@ -42,11 +42,14 @@ function init(args) {
  * on each log line
  *
  * @param  {Object} options
+ * @param  {Object} logInstance
  * @return {Function}
  */
-function meta(options) {
+function meta(options, logInstance) {
+  var fork = logInstance || logger;
+
   if (options && Object.keys(options).length) {
-    return log(logger.child(options));
+    return log(fork.child(options));
   }
 
   throw new Error('Clay Log: `meta` function requires object argument');
@@ -82,15 +85,25 @@ function log(instanceLog) {
 }
 
 /**
- * [setLogger description]
- * @param {[type]} overwrite [description]
+ * Overwrites Pino package with stub for testing
+ *
+ * @param {Object} overwrite
  */
 function setLogger(overwrite) {
   pino = overwrite;
 }
 
+/**
+ * Returns the in-memorey logging instance
+ * @return {Object}
+ */
+function getLogger() {
+  return logger;
+}
+
 module.exports.init = init;
 module.exports.meta = meta;
+module.exports.getLogger = getLogger;
 
 // For testing
 module.exports.log = log;
