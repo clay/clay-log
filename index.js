@@ -10,13 +10,14 @@ var pino = require('pino'), // Can be overwritten for testing
  * @return {Function}
  */
 function init(args) {
+  var name, meta, output = process.stdout;
+
   if (!args || !Object.keys(args).length || !args.name) {
     throw new Error('Init must be called with `name` property');
   }
 
-  var name = args.name || '',
-    meta = args.meta || undefined,
-    output = process.stdout;
+  name = args.name || '';
+  meta = args.meta || undefined;
 
   if (process.env.CLAY_LOG_PRETTY) {
     output = pino.pretty({levelFirst: true});
