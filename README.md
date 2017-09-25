@@ -86,6 +86,22 @@ The arguments are in the following order:
 2. Message (String)
 3. Accompanying log information (Object)
 
+### Errors
+
+Want to be lazy? If you pass in an `Error` object as the only argument and everything will get formatted properly OR just pass an `Error` as a second argument and you'll be good.
+
+```
+var loggingInstance = clayLog.init({
+  name: 'coolClayProject',
+  meta: {
+    important: 'information'
+  }
+});
+
+loggingInstance(new Error('oh no!'));
+loggingInstance('error', new Error('oh no!'));
+```
+
 ## Pretty Printing
 
 Pretty printing is controlled by an environment variable. By setting `process.env.CLAY_LOG_PRETTY` the logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
