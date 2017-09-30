@@ -20,13 +20,15 @@ function init(args) {
   meta = args.meta || undefined;
 
   if (process.env.CLAY_LOG_PRETTY) {
-    output = pino.pretty({levelFirst: true});
+    output = pino.pretty({ levelFirst: true });
     output.pipe(process.stdout);
   }
 
-  // Set the logger
+  // Set the logger. The minimum allowed
+  // level is set via an env var called `LOG`
   logger = pino({
-    name: name
+    name: name,
+    level: process.env.LOG || 'info'
   }, output);
 
   // If meta data was passed in for all logging, let's add it
@@ -79,7 +81,6 @@ function log(instanceLog) {
       return;
     }
 
-    instanceLog.level = level; // Make sure level is set each time
     instanceLog[level](data, msg);
   };
 }
