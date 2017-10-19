@@ -81,6 +81,9 @@ function log(instanceLog) {
       return;
     }
 
+    // Assign the _label
+    data._label = level.toUpperCase();
+    // Log it
     instanceLog[level](data, msg);
   };
 }

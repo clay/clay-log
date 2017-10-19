@@ -102,6 +102,10 @@ loggingInstance(new Error('oh no!'));
 loggingInstance('error', new Error('oh no!'));
 ```
 
+## `_label` Property
+
+This property on the output log message is meant to make the logs more human searchable when using grep or importing into an ELK-like tool. Rather than making people remember the association between `level` and the different levels meanings, we supply a human-readable property.
+
 ## Pretty Printing
 
 Pretty printing is controlled by an environment variable. By setting `process.env.CLAY_LOG_PRETTY` the logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
