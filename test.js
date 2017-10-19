@@ -102,7 +102,7 @@ describe(dirname, function () {
 
       log('info', 'message');
       sinon.assert.calledOnce(fakeLogInstance.info);
-      sinon.assert.calledWith(fakeLogInstance.info, {}, 'message');
+      sinon.assert.calledWith(fakeLogInstance.info, {_label: 'INFO'}, 'message');
     });
 
     it('calls the logging level with the arg object', function () {
@@ -127,7 +127,7 @@ describe(dirname, function () {
 
       log(fakeError);
       sinon.assert.calledOnce(fakeLogInstance.error);
-      sinon.assert.calledWith(fakeLogInstance.error, {}, fakeError);
+      sinon.assert.calledWith(fakeLogInstance.error, {_label: 'ERROR'}, fakeError);
     });
 
     it('logs an error if no level or msg are passed in', function () {
