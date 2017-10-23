@@ -19,7 +19,7 @@ function init(args) {
   name = args.name;
   meta = args.meta || undefined;
 
-  if (process.env.CLAY_LOG_PRETTY) {
+  if (process.env.CLAY_LOG_PRETTY && (process.versions && process.versions.node)) {
     output = pino.pretty({ levelFirst: true });
     output.pipe(process.stdout);
   }
