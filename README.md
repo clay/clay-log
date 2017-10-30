@@ -86,6 +86,10 @@ The arguments are in the following order:
 2. Message (String)
 3. Accompanying log information (Object)
 
+### Setting Minimum Log Level
+
+For production instances it may not be necessary to log the same messages you do in dev environments. By default, Clay Log will only display `info` and above level logs, but this can be configured with an environment variable. Set `process.env.LOG` to a [corresponding log level](#usage) and that will be the minimum level that appears.
+
 ### Errors
 
 Want to be lazy? If you pass in an `Error` object as the only argument and everything will get formatted properly OR just pass an `Error` as a second argument and you'll be good.
