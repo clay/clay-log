@@ -57,6 +57,24 @@ loggerOne('info', 'some cool message', { additional: 'info' });
 loggerTwo('info', 'some different cool message');
 ```
 
+If you'd like human-readable logs, Use the `pretty` property.
+
+```
+var loggerOne = clayLog.init({
+  name: 'some-cli-tool',
+  pretty: true
+});
+```
+
+If you're using the module in a command-line tool, it's useful to be able to specify where the logs should output to. By default, they will output to `stdout`, but this can be changed by the `output` property.
+
+```
+var loggerOne = clayLog.init({
+  name: 'some-cli-tool',
+  output: process.stderr
+});
+```
+
 ## Usage
 
 Once you have a logging instance you're free to begin logging. Logging levels are the same as the default PinoJS levels:
@@ -112,4 +130,4 @@ This property on the output log message is meant to make the logs more human sea
 
 ## Pretty Printing
 
-Pretty printing is controlled by an environment variable. By setting `process.env.CLAY_LOG_PRETTY` the logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
+If you don't pass in a `pretty` property, pretty printing will controlled by the `CLAY_LOG_PRETTY` environment variable. The logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
