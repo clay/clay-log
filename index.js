@@ -4,24 +4,54 @@ var pino = require('pino'), // Can be overwritten for testing
   logger; // Will be overwritten during setup
 
 /**
+ * allow passing in a different output to stream to
+ * note: this is used by tools that want to output logs to stderr rather than stdout
+ * @param  {Object} args
+ * @return {stream}
+ */
+function getOutput(args) {
+  return args.output || process.stdout;
+}
+
+/**
+ * determine whether to pretty-print logs
+ * @param  {Object} args
+ * @return {Boolean}
+ */
+function getPrettyPrint(args) {
+  return args.pretty || process.env.CLAY_LOG_PRETTY && (process.versions && process.versions.node);
+}
+
+/**
+ * check args to make sure they exist and have a `name` property
+ * @param  {object} args
+ */
+function checkArgs(args) {
+  if (!args || !Object.keys(args).length || !args.name) {
+    throw new Error('Init must be called with `name` property');
+  }
+}
+
+/**
  * Initialize the logger.
  *
  * @param  {Object} args
  * @return {Function}
  */
 function init(args) {
-  var name, meta, output = process.stdout;
+  var output, stream, pretty, name, meta;
 
-  if (!args || !Object.keys(args).length || !args.name) {
-    throw new Error('Init must be called with `name` property');
-  }
+  checkArgs(args);
 
+  output = getOutput(args);
+  stream = getOutput(args);
+  pretty = getPrettyPrint(args);
   name = args.name;
   meta = args.meta || undefined;
 
-  if (process.env.CLAY_LOG_PRETTY && (process.versions && process.versions.node)) {
+  if (pretty) {
     output = pino.pretty({ levelFirst: true });
-    output.pipe(process.stdout);
+    output.pipe(stream);
   }
 
   // Set the logger. The minimum allowed

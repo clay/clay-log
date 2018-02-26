@@ -6,17 +6,14 @@ const sinon = require('sinon'),
   expect = require('chai').expect;
 
 describe(dirname, function () {
-  let sandbox,
-    pipeSpy = sinon.spy(),
-    childSpy = sinon.spy(),
-    fakeLog = createFakeLogger();
+  let sandbox, fakeLog, pipeSpy, childSpy;
 
   function createFakeLogger() {
-    var fakeLog = sinon.stub().returns({
+    var fakeLog = sandbox.stub().returns({
       child: childSpy
     });
 
-    fakeLog.pretty = sinon.stub().returns({
+    fakeLog.pretty = sandbox.stub().returns({
       pipe: pipeSpy
     });
 
@@ -25,6 +22,9 @@ describe(dirname, function () {
 
   beforeEach(function () {
     sandbox = sinon.sandbox.create();
+    pipeSpy = sandbox.spy();
+    childSpy = sandbox.spy();
+    fakeLog = createFakeLogger();
     lib.setLogger(fakeLog);
   });
 
@@ -59,6 +59,12 @@ describe(dirname, function () {
       delete process.env.CLAY_LOG_PRETTY;
     });
 
+    it('calls pino.pretty function if `pretty` is passed into init', function () {
+      fn({ name: 'test', pretty: true });
+      sinon.assert.calledOnce(fakeLog.pretty);
+      sinon.assert.calledOnce(pipeSpy);
+    });
+
     it('calls pino.child function if `meta` object is passed in', function () {
       var fakeMeta = { fake: 'meta' };
 
@@ -80,9 +86,9 @@ describe(dirname, function () {
     });
 
     it('calls the logger `child` function to spawn a new logger instance', function () {
-      var fakeMeta = {meta: 'cool'};
+      var fakeMeta = { fake: 'meta' };
 
-      fn(fakeMeta);
+      fn(fakeMeta, fakeLog());
       sinon.assert.calledWith(childSpy, fakeMeta);
     });
   });
