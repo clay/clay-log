@@ -79,11 +79,19 @@ var loggerOne = clayLog.init({
 
 Once you have a logging instance you're free to begin logging. Logging levels are the same as the default PinoJS levels:
 
-  - `info`
-  - `trace`
-  - `debug`
-  - `warn`
-  - `error`
+|            |       |       |      |      |       |       |          |
+|:-----------|-------|-------|------|------|-------|-------|---------:|
+| **Level:** | trace | debug | info | warn | error | fatal | silent   |
+| **Value:** | 10    | 20    | 30   | 40   | 50    | 60    | Infinity |
+
+The logging level is a *minimum* level based on the associated value of that level.
+
+For instance if the logger level is `info` *(30)* then `info` *(30)*, `warn` *(40)*, `error` *(50)* and `fatal` *(60)* log methods will be enabled but the `trace` *(10)* and `debug` *(20)* methods, being less than 30, will not.
+
+The `silent` logging level is a specialized level which will disable all logging,
+there is no `silent` log method.
+
+Table and description taken from [here](https://github.com/pinojs/pino/blob/master/docs/api.md#loggerlevel-string-gettersetter).
 
 To use simply do the following:
 
