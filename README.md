@@ -128,6 +128,32 @@ loggingInstance('error', new Error('oh no!'));
 
 This property on the output log message is meant to make the logs more human searchable when using grep or importing into an ELK-like tool. Rather than making people remember the association between `level` and the different levels meanings, we supply a human-readable property.
 
-## Pretty Printing
+## Environment Variables
+
+| **Config Value**        | **Decription**                                     |
+| ----------------------- | -------------------------------------------------- |
+| `CLAY_LOG_HEAP`         | Set to '1' to enable heap logging.                 |
+| `CLAY_LOG_PRETTY`       | Set to a 'truthy' value to enable pretty-printing. |
+
+
+#### Heap Logging
+
+If `CLAY_LOG_HEAP` is set to "1" the following additional heap statistics will
+be included:
+```json
+{
+    "does_zap_garbage": 0,
+    "heap_size_limit": 0,
+    "malloced_memory": 0,
+    "peak_malloced_memory": 0,
+    "total_available_size": 0,
+    "total_heap_size": 0,
+    "total_heap_size_executable": 0,
+    "total_physical_size": 0,
+    "used_heap_size": 0
+}
+```
+
+#### Pretty Printing
 
 If you don't pass in a `pretty` property, pretty printing will controlled by the `CLAY_LOG_PRETTY` environment variable. The logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.

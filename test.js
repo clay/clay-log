@@ -145,6 +145,51 @@ describe(dirname, function () {
       log();
       sinon.assert.calledOnce(fakeLogInstance.error);
     });
+
+    it('logs memory usage if CLAY_LOG_HEAP is set to "1"', function () {
+      process.env.CLAY_LOG_HEAP = '1';
+      const fakeLogInstance = {
+          info: sinon.stub()
+        },
+        log = fn(fakeLogInstance),
+        data = { some: 'data' },
+        expected = {
+          _label: 'INFO',
+          meta: {
+            does_zap_garbage: sinon.match.number,
+            heap_size_limit: sinon.match.number,
+            malloced_memory: sinon.match.number,
+            peak_malloced_memory: sinon.match.number,
+            total_available_size: sinon.match.number,
+            total_heap_size: sinon.match.number,
+            total_heap_size_executable: sinon.match.number,
+            total_physical_size: sinon.match.number,
+            used_heap_size: sinon.match.number
+          },
+          some: 'data'
+        };
+
+      log('info', 'message', data);
+      sinon.assert.calledOnce(fakeLogInstance.info);
+      sinon.assert.calledWith(fakeLogInstance.info, expected, 'message');
+    });
+
+    it('doesn\'t log memory usage if CLAY_LOG_HEAP != "1"', function () {
+      process.env.CLAY_LOG_HEAP = '0';
+      const fakeLogInstance = {
+          info: sinon.stub()
+        },
+        log = fn(fakeLogInstance),
+        data = { some: 'data' };
+
+      log('info', 'message', data);
+      sinon.assert.calledOnce(fakeLogInstance.info);
+      sinon.assert.neverCalledWith(
+        fakeLogInstance.info,
+        { used_heap_size: sinon.match.any },
+        'message'
+      );
+    });
   });
 
   describe('getLogger', function () {
