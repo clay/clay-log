@@ -1,7 +1,8 @@
 'use strict';
 
 var pino = require('pino'), // Can be overwritten for testing
-  logger; // Will be overwritten during setup
+  logger, // Will be overwritten during setup
+  v8 = require('v8');
 
 /**
  * allow passing in a different output to stream to
@@ -30,6 +31,16 @@ function checkArgs(args) {
   if (!args || !Object.keys(args).length || !args.name) {
     throw new Error('Init must be called with `name` property');
   }
+}
+
+/**
+ * enrich the log metadata with additional context about memory use,
+ * this may be useful for tracking memory leaks.
+ * @param {Object} meta
+ * @return {Object}
+ */
+function addHeap(meta) {
+  return Object.assign(meta, v8.getHeapStatistics());
 }
 
 /**
@@ -113,6 +124,12 @@ function log(instanceLog) {
 
     // Assign the _label
     data._label = level.toUpperCase();
+
+    // Include heap info if configured.
+    if (process.env.CLAY_LOG_HEAP === '1') {
+      data.meta = addHeap(data.meta || {});
+    }
+
     // Log it
     instanceLog[level](data, msg);
   };
