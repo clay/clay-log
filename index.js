@@ -2,7 +2,13 @@
 
 var pino = require('pino'), // Can be overwritten for testing
   logger, // Will be overwritten during setup
-  v8 = require('v8');
+  v8;
+
+try {
+  v8 = require(require.resolve('v8'));
+} catch (err) {
+  v8 = null;
+}
 
 /**
  * allow passing in a different output to stream to
@@ -36,11 +42,11 @@ function checkArgs(args) {
 /**
  * enrich the log metadata with additional context about memory use,
  * this may be useful for tracking memory leaks.
- * @param {Object} meta
+ * @param {Object} data
  * @return {Object}
  */
-function addHeap(meta) {
-  return Object.assign(meta, v8.getHeapStatistics());
+function addHeap(data) {
+  return v8 ? Object.assign(data, v8.getHeapStatistics()) : data;
 }
 
 /**
@@ -127,7 +133,7 @@ function log(instanceLog) {
 
     // Include heap info if configured.
     if (process.env.CLAY_LOG_HEAP === '1') {
-      data.meta = addHeap(data.meta || {});
+      data = addHeap(data);
     }
 
     // Log it

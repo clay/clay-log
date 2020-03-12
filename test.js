@@ -155,17 +155,15 @@ describe(dirname, function () {
         data = { some: 'data' },
         expected = {
           _label: 'INFO',
-          meta: {
-            does_zap_garbage: sinon.match.number,
-            heap_size_limit: sinon.match.number,
-            malloced_memory: sinon.match.number,
-            peak_malloced_memory: sinon.match.number,
-            total_available_size: sinon.match.number,
-            total_heap_size: sinon.match.number,
-            total_heap_size_executable: sinon.match.number,
-            total_physical_size: sinon.match.number,
-            used_heap_size: sinon.match.number
-          },
+          does_zap_garbage: sinon.match.number,
+          heap_size_limit: sinon.match.number,
+          malloced_memory: sinon.match.number,
+          peak_malloced_memory: sinon.match.number,
+          total_available_size: sinon.match.number,
+          total_heap_size: sinon.match.number,
+          total_heap_size_executable: sinon.match.number,
+          total_physical_size: sinon.match.number,
+          used_heap_size: sinon.match.number,
           some: 'data'
         };
 
