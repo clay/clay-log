@@ -51,18 +51,38 @@ describe(dirname, function () {
       expect(cb).to.not.throw(Error);
     });
 
-    it('calls pino.pretty function if `prettyPrint` is set to true', function () {
-      process.env.CLAY_LOG_PRETTY = true;
-      fn({ name: 'test', prettyPrint: true });
+    it('calls pino.pretty function if `CLAY_LOG_PRETTY` is set to "true"', function () {
+      process.env.CLAY_LOG_PRETTY = 'true';
+      fn({ name: 'test' });
       sinon.assert.calledOnce(fakeLog.pretty);
       sinon.assert.calledOnce(pipeSpy);
       delete process.env.CLAY_LOG_PRETTY;
+    });
+
+    it('doesn\'t call pino.pretty function if `CLAY_LOG_PRETTY` is set to "false"', function () {
+      process.env.CLAY_LOG_PRETTY = 'false';
+      fn({ name: 'test'});
+      sinon.assert.notCalled(fakeLog.pretty);
+      delete process.env.CLAY_LOG_PRETTY;
+    });
+
+    it('doesn\'t call pino.pretty function if `CLAY_LOG_PRETTY` is not set', function () {
+      delete process.env.CLAY_LOG_PRETTY;
+      fn({ name: 'test'});
+      sinon.assert.notCalled(fakeLog.pretty);
     });
 
     it('calls pino.pretty function if `pretty` is passed into init', function () {
       fn({ name: 'test', pretty: true });
       sinon.assert.calledOnce(fakeLog.pretty);
       sinon.assert.calledOnce(pipeSpy);
+    });
+
+    it('doesn\'t call pino.pretty function if `pretty` is false and CLAY_LOG_PRETTY is "true"', function () {
+      process.env.CLAY_LOG_PRETTY = 'true';
+      fn({ name: 'test', pretty: false });
+      sinon.assert.notCalled(fakeLog.pretty);
+      delete process.env.CLAY_LOG_PRETTY;
     });
 
     it('calls pino.child function if `meta` object is passed in', function () {
