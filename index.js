@@ -26,7 +26,15 @@ function getOutput(args) {
  * @return {Boolean}
  */
 function getPrettyPrint(args) {
-  return args.pretty || process.env.CLAY_LOG_PRETTY && (process.versions && process.versions.node);
+  if (!process.versions || !process.versions.node) {
+    return false;  // No pretty logging on the client-side.
+  } else if (args.pretty === true || args.pretty === false) {
+    return args.pretty;
+  } else if (process.env.CLAY_LOG_PRETTY) {
+    return process.env.CLAY_LOG_PRETTY !== 'false';
+  } else {
+    return false;
+  }
 }
 
 /**
