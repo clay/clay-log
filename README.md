@@ -134,6 +134,9 @@ This property on the output log message is meant to make the logs more human sea
 | ----------------------- | -------------------------------------------------- |
 | `CLAY_LOG_HEAP`         | Set to '1' to enable heap logging.                 |
 | `CLAY_LOG_PRETTY`       | Set to a 'truthy' value to enable pretty-printing. |
+| `CLAY_LOG_SENTRY_DSN`   | Error-level messages will be reported to Sentry if provided. |
+
+> Note: `CLAY_LOG_SENTRY_DSN` requires your project to include `@sentry/node` in `package.json`.
 
 
 #### Heap Logging

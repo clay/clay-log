@@ -2,12 +2,23 @@
 
 var pino = require('pino'), // Can be overwritten for testing
   logger, // Will be overwritten during setup
+  Sentry,
   v8;
 
 try {
   v8 = require(require.resolve('v8'));
 } catch (err) {
   v8 = null;
+}
+
+try {
+  Sentry = require(require.resolve('@sentry/node'));
+  Sentry.init({
+    dsn: process.env.CLAY_LOG_SENTRY_DSN,
+    onunhandledrejection: false
+  });
+} catch (err) {
+  Sentry = null;
 }
 
 /**
@@ -142,6 +153,10 @@ function log(instanceLog) {
     // Include heap info if configured.
     if (process.env.CLAY_LOG_HEAP === '1') {
       data = addHeap(data);
+    }
+
+    if (Sentry && level === 'error') {
+      Sentry.captureException(msg, { extra: data });
     }
 
     // Log it
