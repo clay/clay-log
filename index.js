@@ -2,24 +2,7 @@
 
 var pino = require('pino'), // Can be overwritten for testing
   logger, // Will be overwritten during setup
-  Sentry,
-  v8;
-
-try {
-  v8 = require(require.resolve('v8'));
-} catch (err) {
-  v8 = null;
-}
-
-try {
-  Sentry = require(require.resolve('@sentry/node'));
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    onunhandledrejection: false
-  });
-} catch (err) {
-  Sentry = null;
-}
+  plugins;
 
 /**
  * allow passing in a different output to stream to
@@ -56,33 +39,6 @@ function checkArgs(args) {
   if (!args || !Object.keys(args).length || !args.name) {
     throw new Error('Init must be called with `name` property');
   }
-}
-
-/**
- * enrich the log metadata with additional context about memory use,
- * this may be useful for tracking memory leaks.
- * @param {Object} data
- * @return {Object}
- */
-function addHeap(data) {
-  return v8 ? Object.assign(data, v8.getHeapStatistics()) : data;
-}
-
-function sentryWrapper(logger) {
-  if (Sentry) {
-    const _error = logger.error;
-    logger.error = function(data, msg) {
-      _error.apply(logger, data, msg);
-      if (msg instanceof Error) {
-        Sentry.captureException(msg, { extra: data });
-      } else {
-        const err = new Error(msg);
-        err.stack = data instanceof Object ? data.stack : '';
-        Sentry.captureException(err, { extra: data });
-      }
-    };
-  }
-  return logger;
 }
 
 /**
@@ -123,6 +79,37 @@ function init(args) {
 }
 
 /**
+ * Initialize logger plugins.
+ * Accepts a comma-delimited list of logging plugins to load and
+ * composes them together to return a single function applying all plugins.
+ *
+ * @return {function}
+ */
+function initPlugins() {
+  const CLAY_LOG_PLUGINS = process.env.CLAY_LOG_PLUGINS || 'sentry,heap';
+  const modules = CLAY_LOG_PLUGINS
+    .split(',')
+    .filter(module => !!module)
+    .map(module => module.trim())
+    .map((module) => {
+      try {
+        return require(`./plugins/${module}`);
+      } catch {
+        logger.error(`Could not locate clay-log plugin ${module}.`);
+      }
+    })
+    .filter(module => !!module);
+
+  if (modules.length == 0) {
+    return (x) => x;
+  } else if (modules.length == 1) {
+    return modules[0];
+  } else {
+    return modules.reduceRight((a, b) => (...args) => b(a(...args)));
+  }
+}
+
+/**
  * Return a new logging instance with associated metadata
  * on each log line
  *
@@ -134,7 +121,7 @@ function meta(options, logInstance) {
   var fork = logInstance || logger;
 
   if (options && Object.keys(options).length) {
-    return log(sentryWrapper(fork.child(options)));
+    return log(fork.child(options));
   }
 
   throw new Error('Clay Log: `meta` function requires object argument');
@@ -151,6 +138,10 @@ function meta(options, logInstance) {
  * @return {Function}
  */
 function log(instanceLog) {
+  if (!plugins) {
+    instanceLog = initPlugins()(instanceLog);
+  }
+
   return function (level, msg, data) {
     data = data || {};
 
@@ -166,11 +157,6 @@ function log(instanceLog) {
 
     // Assign the _label
     data._label = level.toUpperCase();
-
-    // Include heap info if configured.
-    if (process.env.CLAY_LOG_HEAP === '1') {
-      data = addHeap(data);
-    }
 
     // Log it
     instanceLog[level](data, msg);
