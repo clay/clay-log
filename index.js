@@ -14,7 +14,7 @@ try {
 try {
   Sentry = require(require.resolve('@sentry/node'));
   Sentry.init({
-    dsn: process.env.CLAY_LOG_SENTRY_DSN,
+    dsn: process.env.SENTRY_DSN,
     onunhandledrejection: false
   });
 } catch (err) {
@@ -68,6 +68,23 @@ function addHeap(data) {
   return v8 ? Object.assign(data, v8.getHeapStatistics()) : data;
 }
 
+function sentryWrapper(logger) {
+  if (Sentry) {
+    const _error = logger.error;
+    logger.error = function(data, msg) {
+      _error.apply(logger, data, msg);
+      if (msg instanceof Error) {
+        Sentry.captureException(msg, { extra: data });
+      } else {
+        const err = new Error(msg);
+        err.stack = data instanceof Object ? data.stack : '';
+        Sentry.captureException(err, { extra: data });
+      }
+    };
+  }
+  return logger;
+}
+
 /**
  * Initialize the logger.
  *
@@ -117,7 +134,7 @@ function meta(options, logInstance) {
   var fork = logInstance || logger;
 
   if (options && Object.keys(options).length) {
-    return log(fork.child(options));
+    return log(sentryWrapper(fork.child(options)));
   }
 
   throw new Error('Clay Log: `meta` function requires object argument');
@@ -153,10 +170,6 @@ function log(instanceLog) {
     // Include heap info if configured.
     if (process.env.CLAY_LOG_HEAP === '1') {
       data = addHeap(data);
-    }
-
-    if (Sentry && level === 'error') {
-      Sentry.captureException(msg, { extra: data });
     }
 
     // Log it
