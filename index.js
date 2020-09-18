@@ -86,10 +86,11 @@ function init(args) {
  * @return {function}
  */
 function initPlugins() {
-  const CLAY_LOG_PLUGINS = process.env.CLAY_LOG_PLUGINS || 'sentry,heap';
+  const CLAY_LOG_PLUGINS = process.env.CLAY_LOG_PLUGINS || '';
   const modules = CLAY_LOG_PLUGINS
     .split(',')
     .filter(module => !!module)
+    .filter(module => module[0] != '_')
     .map(module => module.trim())
     .map((module) => {
       try {
