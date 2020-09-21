@@ -90,7 +90,7 @@ function initPlugins() {
   const modules = CLAY_LOG_PLUGINS
     .split(',')
     .filter(module => !!module)
-    .filter(module => module[0] != '_')
+    .filter(module => module[0] != '_') // "_" is used to reserve the private namespace.
     .map(module => module.trim())
     .map((module) => {
       try {
