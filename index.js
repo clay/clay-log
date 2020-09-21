@@ -89,9 +89,9 @@ function initPlugins() {
   const CLAY_LOG_PLUGINS = process.env.CLAY_LOG_PLUGINS || '';
   const modules = CLAY_LOG_PLUGINS
     .split(',')
+    .map(module => module.trim())
     .filter(module => !!module)
     .filter(module => module[0] != '_') // "_" is used to reserve the private namespace.
-    .map(module => module.trim())
     .map((module) => {
       try {
         return require(`./plugins/${module}`);
