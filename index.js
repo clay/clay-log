@@ -106,7 +106,7 @@ function initPlugins() {
   } else if (modules.length == 1) {
     return modules[0];
   } else {
-    return modules.reduceRight((a, b) => (...args) => b(a(...args)));
+    return modules.reduce((a, b) => (...args) => b(a(...args)));
   }
 }
 
