@@ -21,7 +21,7 @@ function getOutput(args) {
  */
 function getPrettyPrint(args) {
   if (!process.versions || !process.versions.node) {
-    return false;  // No pretty logging on the client-side.
+    return false; // No pretty logging on the client-side.
   } else if (args.pretty === true || args.pretty === false) {
     return args.pretty;
   } else if (process.env.CLAY_LOG_PRETTY) {
@@ -95,7 +95,7 @@ function initPlugins() {
     .map((module) => {
       try {
         return require(`./plugins/${module}`);
-      } catch {
+      } catch (err) {
         logger.error(`Could not locate clay-log plugin ${module}.`);
       }
     })

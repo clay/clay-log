@@ -1,17 +1,38 @@
 'use strict';
 
 const sinon = require('sinon'),
+  devnull = require('dev-null'),
   dirname = __dirname.split('/').pop(),
   lib = require('./'),
-  expect = require('chai').expect;
+  expect = require('chai').expect,
+  { noop } = require('pino/lib/tools');
 
 describe(dirname, function () {
+  const levels = {
+    trace: 10,
+    debug: 20,
+    info: 30,
+    warn: 40,
+    error: 50,
+    fatal: 60
+  };
   let sandbox, fakeLog, pipeSpy, childSpy;
 
   function createFakeLogger() {
-    var fakeLog = sandbox.stub().returns({
-      child: childSpy
+    const logger = { child: childSpy, levels: { values: levels } };
+
+    Object.keys(levels).forEach((level) => {
+      switch (level) {
+        case 'trace':
+          logger[level] = noop;
+        case 'debug':
+          logger[level] = noop;
+        default:
+          logger[level] = sinon.stub();
+      }
     });
+
+    const fakeLog = sandbox.stub().returns(logger);
 
     fakeLog.pretty = sandbox.stub().returns({
       pipe: pipeSpy
@@ -21,6 +42,8 @@ describe(dirname, function () {
   }
 
   beforeEach(function () {
+    process.env.NODE_ENV = 'test';
+    process.env.CLAY_LOG_PLUGINS = '';
     sandbox = sinon.sandbox.create();
     pipeSpy = sandbox.spy();
     childSpy = sandbox.spy();
@@ -166,11 +189,9 @@ describe(dirname, function () {
       sinon.assert.calledOnce(fakeLogInstance.error);
     });
 
-    it('logs memory usage if CLAY_LOG_HEAP is set to "1"', function () {
-      process.env.CLAY_LOG_HEAP = '1';
-      const fakeLogInstance = {
-          info: sinon.stub()
-        },
+    it('logs memory usage if CLAY_LOG_PLUGINS is set to "heap"', function () {
+      process.env.CLAY_LOG_PLUGINS = 'heap';
+      const fakeLogInstance = createFakeLogger()(),
         log = fn(fakeLogInstance),
         data = { some: 'data' },
         expected = {
@@ -178,6 +199,8 @@ describe(dirname, function () {
           does_zap_garbage: sinon.match.number,
           heap_size_limit: sinon.match.number,
           malloced_memory: sinon.match.number,
+          number_of_detached_contexts: sinon.match.number,
+          number_of_native_contexts: sinon.match.number,
           peak_malloced_memory: sinon.match.number,
           total_available_size: sinon.match.number,
           total_heap_size: sinon.match.number,
@@ -188,15 +211,13 @@ describe(dirname, function () {
         };
 
       log('info', 'message', data);
-      sinon.assert.calledOnce(fakeLogInstance.info);
-      sinon.assert.calledWith(fakeLogInstance.info, expected, 'message');
+      sinon.assert.calledOnce(fakeLogInstance.info._original);
+      sinon.assert.calledWith(fakeLogInstance.info._original, expected, 'message');
     });
 
-    it('doesn\'t log memory usage if CLAY_LOG_HEAP != "1"', function () {
-      process.env.CLAY_LOG_HEAP = '0';
-      const fakeLogInstance = {
-          info: sinon.stub()
-        },
+    it('doesn\'t log memory usage if CLAY_LOG_PLUGINS does not contain "heap"', function () {
+      process.env.CLAY_LOG_PLUGINS = '';
+      const fakeLogInstance = createFakeLogger()(),
         log = fn(fakeLogInstance),
         data = { some: 'data' };
 
@@ -207,6 +228,60 @@ describe(dirname, function () {
         { used_heap_size: sinon.match.any },
         'message'
       );
+    });
+
+    it('logs errors to Sentry if CLAY_LOG_PLUGINS is set to "sentry"', function () {
+      process.env.CLAY_LOG_PLUGINS = 'sentry';
+      const Sentry = require('@sentry/node');
+
+      Sentry.captureException = sinon.stub();
+      const fakeLogInstance = createFakeLogger()(),
+        log = fn(fakeLogInstance),
+        data = { some: 'data' },
+        expected = {
+          _label: 'ERROR',
+          some: 'data'
+        };
+
+      log('error', 'message', data);
+      sinon.assert.calledOnce(fakeLogInstance.error._original);
+      sinon.assert.calledWith(fakeLogInstance.error._original, expected, 'message');
+      sinon.assert.calledOnce(Sentry.captureException);
+      sinon.assert.calledWith(Sentry.captureException, sinon.match.has('stack'), sinon.match.object);
+    });
+
+    it('runs multiple plugins CLAY_LOG_PLUGINS is set to "sentry,heap"', function () {
+      process.env.CLAY_LOG_PLUGINS = 'sentry,heap';
+      const Sentry = require('@sentry/node');
+
+      Sentry.captureException = sinon.stub();
+
+      const fakeLogInstance = createFakeLogger()(),
+        log = fn(fakeLogInstance),
+        data = { some: 'data' };
+
+      log('error', 'message', data);
+      sinon.assert.calledOnce(fakeLogInstance.error._original._original);
+      sinon.assert.calledWith(
+        fakeLogInstance.error._original._original,
+        sinon.match.has('used_heap_size'), 'message'
+      );
+      sinon.assert.calledOnce(Sentry.captureException);
+    });
+
+    it('skips unavailable or invalid CLAY_LOG_PLUGINS', function () {
+      process.env.CLAY_LOG_PLUGINS = 'foo,bar,baz';
+      const fakeLogInstance = createFakeLogger()(),
+        log = fn(fakeLogInstance),
+        data = { some: 'data' },
+        expected = {
+          _label: 'INFO',
+          some: 'data'
+        };
+
+      log('info', 'message', data);
+      sinon.assert.calledOnce(fakeLogInstance.info);
+      sinon.assert.calledWith(fakeLogInstance.info, expected, 'message');
     });
   });
 
@@ -219,6 +294,34 @@ describe(dirname, function () {
       lib.setLogger(fakeLogger);
       lib.init({name: 'testing'});
       expect(fn()).to.equal('hello');
+    });
+  });
+
+  describe('wrap', function () {
+    const fn = require('./plugins/_utils')[this.title];
+    const pino = require('pino');
+    const logger = pino({ name: 'test-wrapper', level: 'warn' }, devnull());
+    const fakeService = sinon.stub();
+
+    function fakePlugin() {
+      fakeService('foo');
+    }
+
+    const wrappedLogger = fn(fakePlugin, ['info', 'warn'])(logger);
+
+    it('does not trigger plugin due to pino log level being set higher than "info"', function () {
+      wrappedLogger.info('test log: ignore this message');
+      sinon.assert.notCalled(fakeService);
+    });
+
+    it('does not trigger plugin due to plugin config excluding "error"', function () {
+      wrappedLogger.error('test log: ignore this message');
+      sinon.assert.notCalled(fakeService);
+    });
+
+    it('trigers the plugin due to pino log level and plugin including "warn"', function () {
+      wrappedLogger.warn('test log: ignore this message');
+      sinon.assert.calledOnce(fakeService);
     });
   });
 });

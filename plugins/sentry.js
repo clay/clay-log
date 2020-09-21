@@ -9,7 +9,6 @@ Sentry.init({
   onunhandledrejection: false
 });
 
-
 function wrapper(data, msg) {
   if (msg instanceof Error) {
     Sentry.captureException(msg, { extra: data });
