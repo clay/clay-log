@@ -9,6 +9,12 @@ Sentry.init({
   onunhandledrejection: false
 });
 
+/**
+ * Reports error-level logs to Sentry.
+ *
+ * @param {object} data: The Error or data to report.
+ * @param {string} msg: The name of the Error.
+ */
 function wrapper(data, msg) {
   if (msg instanceof Error) {
     Sentry.captureException(msg, { extra: data });

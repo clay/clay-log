@@ -134,17 +134,20 @@ This property on the output log message is meant to make the logs more human sea
 | ----------------------- | -------------------------------------------------- |
 | `CLAY_LOG_HEAP`         | Set to '1' to enable heap logging.                 |
 | `CLAY_LOG_PRETTY`       | Set to a 'truthy' value to enable pretty-printing. |
+| `CLAY_LOG_PLUGINS`      | Comma-delimited list of plug-ins to enabled. Plug-ins are applied in the order listed. |
 
 
 #### Heap Logging
 
-If `CLAY_LOG_HEAP` is set to "1" the following additional heap statistics will
+If `CLAY_LOG_PLUGINS` includes "heap" the following additional heap statistics will
 be included:
 ```json
 {
     "does_zap_garbage": 0,
     "heap_size_limit": 0,
     "malloced_memory": 0,
+    "number_of_detatched_contexts": 0,
+    "number_of_native_contexts": 0,
     "peak_malloced_memory": 0,
     "total_available_size": 0,
     "total_heap_size": 0,
@@ -154,6 +157,44 @@ be included:
 }
 ```
 
+#### Sentry Reporting
+
+If `CLAY_LOG_PLUGINS` includes "sentry" all `error` level logs will be reported to Sentry.
+
+:warning: This plug-in requires `@sentry/node` to be installed as a peer dependency and `SENTRY_DSN` to be set as an environment variable.
+
 #### Pretty Printing
 
 If you don't pass in a `pretty` property, pretty printing will controlled by the `CLAY_LOG_PRETTY` environment variable. The logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
+
+
+## Writing Plug-Ins
+
+A plug-in is a wrapper function that accepts two arguments:
+
+* `data`: The extra context object that will be included in a log.
+* `msg`: The string summary of the log message.
+
+A plug-in can be used to enhance `data` with additional context or to take additional
+actions (like reporting errors to another service).
+
+Here is an example plug-in called `env` that will add the `NODE_ENV` to every log line with
+the `warn` or `error` level:
+
+```js
+# ./plugins/env.js
+
+// This utility should be used in all plug-ins. It provides an abstraction
+// around the process used to wrap functions.
+const { wrap } = require('./_utils');
+
+// This is where your plug-in code will be defined. Anything in this block is
+// executed **before** clay-log logs the message.
+function wrapper(data, msg) {
+    data.env = process.env.NODE_ENV;
+}
+
+// The export of a plug-in will always use the format `wrap(<plug-in-func>, [<levels>])`.
+// Omitting `[<levels>]` will apply the plug-in to all active log-levels.
+module.exports = wrap(wrapper, ['warn', 'error']);
+```
