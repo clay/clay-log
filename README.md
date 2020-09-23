@@ -135,6 +135,7 @@ This property on the output log message is meant to make the logs more human sea
 | `CLAY_LOG_HEAP`         | Set to '1' to enable heap logging.                 |
 | `CLAY_LOG_PRETTY`       | Set to a 'truthy' value to enable pretty-printing. |
 | `CLAY_LOG_PLUGINS`      | Comma-delimited list of plug-ins to enabled. Plug-ins are applied in the order listed. |
+| `CLAY_LOG_PLUGINS_PATH` | Absolute path (or path relative to the CWD) for directory containing additional plug-ins. |
 
 
 #### Heap Logging
@@ -168,7 +169,7 @@ If `CLAY_LOG_PLUGINS` includes "sentry" all `error` level logs will be reported 
 If you don't pass in a `pretty` property, pretty printing will controlled by the `CLAY_LOG_PRETTY` environment variable. The logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
 
 
-## Writing Plug-Ins
+## Writing Core Plug-Ins
 
 A plug-in is a wrapper function that accepts two arguments:
 
@@ -198,3 +199,35 @@ function wrapper(data, msg) {
 // Omitting `[<levels>]` will apply the plug-in to all active log-levels.
 module.exports = wrap(wrapper, ['warn', 'error']);
 ```
+
+## Writing Custom Plug-Ins
+
+A "custom" plug-in is a clay-log extension that lives outside of the `clay-log` project.
+Use a custom plug-in when extending or modifying log data with needs that are specific
+to your use-case but not useful for a broader audience.
+
+To write a custom plugin:
+
+1. Designate where you will store your plug-ins in your project, eg. `./utils/clay-log-plugins`.
+2. Set the `CLAY_LOG_PLUGINS_PATH` environment variable to `./utils/clay-log-plugins`.
+3. Write your plug-in code.
+
+```js
+# ./utils/clay-log-plugins/rename.js
+
+// The utility wrapper import path changes a bit when developing a custom plug-in.
+const { wrap } = require('clay-log/plugins/_utils');
+
+// This is where your plug-in code will be defined. Anything in this block is
+// executed **before** clay-log logs the message.
+function wrapper(data, msg) {
+    data.message = data.msg;
+    delete data['msg'];
+}
+
+// The export of a plug-in will always use the format `wrap(<plug-in-func>, [<levels>])`.
+// Omitting `[<levels>]` will apply the plug-in to all active log-levels.
+module.exports = wrap(wrapper, ['warn', 'error']);
+```
+
+4. Set `CLAY_LOG_PLUGINS=rename` (or whatever custom plug-in names you've used).

@@ -2,6 +2,8 @@
 
 const sinon = require('sinon'),
   devnull = require('dev-null'),
+  fs = require('fs'),
+  path = require('path'),
   dirname = __dirname.split('/').pop(),
   lib = require('./'),
   expect = require('chai').expect,
@@ -283,6 +285,25 @@ describe(dirname, function () {
       sinon.assert.calledOnce(fakeLogInstance.info);
       sinon.assert.calledWith(fakeLogInstance.info, expected, 'message');
     });
+
+    it('loads custom plugins with CLAY_LOG_PLUGINS_PATH', function () {
+      process.env.CLAY_LOG_PLUGINS = 'memory';
+
+      fs.mkdtemp(path.join('.', '.clay-log-test-'), (err, dirname) => {
+        if (err) throw err;
+        process.env.CLAY_LOG_PLUGINS_PATH = dirname;
+        fs.copyFileSync('./plugins/heap.js', path.join(dirname, 'memory.js'));
+        fs.copyFileSync('./plugins/_utils.js', path.join(dirname, '_utils.js'));
+        const fakeLogInstance = createFakeLogger()(),
+          log = fn(fakeLogInstance),
+          data = { some: 'data' };
+
+        log('info', 'message', data);
+        sinon.assert.calledOnce(fakeLogInstance.info._original);
+        sinon.assert.calledWithMatch(fakeLogInstance.info._original, { used_heap_size: sinon.match.any });
+        fs.rmdirSync(dirname, { recursive: true });
+      });
+    });
   });
 
   describe('getLogger', function () {
@@ -322,6 +343,26 @@ describe(dirname, function () {
     it('trigers the plugin due to pino log level and plugin including "warn"', function () {
       wrappedLogger.warn('test log: ignore this message');
       sinon.assert.calledOnce(fakeService);
+    });
+  });
+
+  describe('resolvePluginPath', function () {
+    const fn = lib[this.title];
+
+    it('resolves an absolute path', function () {
+      expect(fn('/tmp/foo')).to.equal('/tmp/foo');
+    });
+
+    it('resolves a relative path', function () {
+      expect(fn('./tmp/foo')).to.equal(`${process.cwd()}/tmp/foo`);
+    });
+
+    it('returns null for an empty string', function () {
+      expect(fn('')).to.equal(null);
+    });
+
+    it('returns null for an undefined value', function () {
+      expect(fn(undefined)).to.equal(null);
     });
   });
 });

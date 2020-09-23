@@ -42,6 +42,26 @@ function checkArgs(args) {
 }
 
 /**
+ * Returns the absolute path to an additional directory containing clay-log plugins.
+ *
+ * @param  {string} dirname: The absolute or relative directory name.
+ * @returns {?string} A string containing an FS path or null.
+ */
+function resolvePluginPath(dirname) {
+  if (!dirname) {
+    return null;
+  }
+
+  const path = require('path');
+  const absPath = path.isAbsolute(dirname)
+    ? dirname
+    : path.join(process.cwd(), dirname);
+
+  // This will normalize the path to ensure it never includes trailing slashes.
+  return absPath.replace(/\/+$/, '');
+}
+
+/**
  * Initialize the logger.
  *
  * @param  {Object} args
@@ -87,16 +107,21 @@ function init(args) {
  */
 function initPlugins() {
   const CLAY_LOG_PLUGINS = process.env.CLAY_LOG_PLUGINS || '';
+  const CLAY_LOG_PLUGINS_PATH = resolvePluginPath(process.env.CLAY_LOG_PLUGINS_PATH);
+  const PATHS = [CLAY_LOG_PLUGINS_PATH, './plugins'].filter(x => !!x);
+
   const modules = CLAY_LOG_PLUGINS
     .split(',')
     .map(module => module.trim())
     .filter(module => !!module)
     .filter(module => module[0] != '_') // "_" is used to reserve the private namespace.
     .map((module) => {
-      try {
-        return require(`./plugins/${module}`);
-      } catch (err) {
-        logger.error(`Could not locate clay-log plugin ${module}.`);
+      for (let i = 0; i < PATHS.length; ++i) {
+        try {
+          return require(`${PATHS[i]}/${module}`);
+        } catch (err) {
+          logger.error(`Could not locate clay-log plugin ${module}.`);
+        }
       }
     })
     .filter(module => !!module);
@@ -188,3 +213,4 @@ module.exports.getLogger = getLogger;
 // For testing
 module.exports.log = log;
 module.exports.setLogger = setLogger;
+module.exports.resolvePluginPath = resolvePluginPath;
