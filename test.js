@@ -7,7 +7,8 @@ const sinon = require('sinon'),
   dirname = __dirname.split('/').pop(),
   lib = require('./'),
   expect = require('chai').expect,
-  { noop } = require('pino/lib/tools');
+  { noop } = require('pino/lib/tools'),
+  semver = require('semver');
 
 describe(dirname, function () {
   const levels = {
@@ -201,8 +202,6 @@ describe(dirname, function () {
           does_zap_garbage: sinon.match.number,
           heap_size_limit: sinon.match.number,
           malloced_memory: sinon.match.number,
-          number_of_detached_contexts: sinon.match.number,
-          number_of_native_contexts: sinon.match.number,
           peak_malloced_memory: sinon.match.number,
           total_available_size: sinon.match.number,
           total_heap_size: sinon.match.number,
@@ -212,6 +211,11 @@ describe(dirname, function () {
           some: 'data'
         };
 
+      // Node 12+ includes some additional context.
+      if (semver.gte(process.version, '12.0.0')) {
+        expected.number_of_detached_contexts = sinon.match.number;
+        expected.number_of_native_contexts = sinon.match.number;
+      }
       log('info', 'message', data);
       sinon.assert.calledOnce(fakeLogInstance.info._original);
       sinon.assert.calledWith(fakeLogInstance.info._original, expected, 'message');
@@ -301,6 +305,8 @@ describe(dirname, function () {
         log('info', 'message', data);
         sinon.assert.calledOnce(fakeLogInstance.info._original);
         sinon.assert.calledWithMatch(fakeLogInstance.info._original, { used_heap_size: sinon.match.any });
+        fs.unlinkSync(path.join(dirname, 'memory.js'));
+        fs.unlinkSync(path.join(dirname, '_utils.js'));
         fs.rmdirSync(dirname, { recursive: true });
       });
     });
