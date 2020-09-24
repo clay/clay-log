@@ -47,7 +47,6 @@ describe(dirname, function () {
   beforeEach(function () {
     process.env.NODE_ENV = 'test';
     process.env.CLAY_LOG_PLUGINS = '';
-    process.env.CLAY_LOG_PLUGINS_PATH = '';
     sandbox = sinon.sandbox.create();
     pipeSpy = sandbox.spy();
     childSpy = sandbox.spy();
@@ -291,7 +290,7 @@ describe(dirname, function () {
       sinon.assert.calledWith(fakeLogInstance.info, expected, 'message');
     });
 
-    it('loads custom plugins with CLAY_LOG_PLUGINS_PATH', function () {
+    it('loads custom plugins with CLAY_LOG_PLUGINS_PATH', function (done) {
       process.env.CLAY_LOG_PLUGINS = 'memory';
 
       fs.mkdtemp(path.join('.', '.clay-log-test-'), (err, dirname) => {
@@ -309,7 +308,20 @@ describe(dirname, function () {
         fs.unlinkSync(path.join(dirname, 'memory.js'));
         fs.unlinkSync(path.join(dirname, '_utils.js'));
         fs.rmdirSync(dirname, { recursive: true });
+        done();
       });
+    });
+  });
+
+  describe('getLogger', function () {
+    const fn = lib[this.title];
+
+    it('returns the logger', function () {
+      var fakeLogger = sandbox.stub().returns('hello');
+
+      lib.setLogger(fakeLogger);
+      lib.init({name: 'testing'});
+      expect(fn()).to.equal('hello');
     });
   });
 

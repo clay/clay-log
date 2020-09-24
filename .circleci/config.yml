@@ -17,11 +17,7 @@ jobs:
     steps:
       - checkout
       - run: npm ci
-      - run:
-          name: Test Node10
-          command: npm test
-          environment:
-            NODE_ENV: test
+      - run: npm test
 
   test_node_12:
     docker:
@@ -30,11 +26,7 @@ jobs:
     steps:
       - checkout
       - run: npm ci
-      - run:
-          name: Test Node12
-          command: npm test
-          environment:
-            NODE_ENV: test
+      - run: npm test
 
 workflows:
   version: 2
