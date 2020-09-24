@@ -47,6 +47,7 @@ describe(dirname, function () {
   beforeEach(function () {
     process.env.NODE_ENV = 'test';
     process.env.CLAY_LOG_PLUGINS = '';
+    process.env.CLAY_LOG_PLUGINS_PATH = '';
     sandbox = sinon.sandbox.create();
     pipeSpy = sandbox.spy();
     childSpy = sandbox.spy();
@@ -309,18 +310,6 @@ describe(dirname, function () {
         fs.unlinkSync(path.join(dirname, '_utils.js'));
         fs.rmdirSync(dirname, { recursive: true });
       });
-    });
-  });
-
-  describe('getLogger', function () {
-    const fn = lib[this.title];
-
-    it('returns the logger', function () {
-      var fakeLogger = sandbox.stub().returns('hello');
-
-      lib.setLogger(fakeLogger);
-      lib.init({name: 'testing'});
-      expect(fn()).to.equal('hello');
     });
   });
 
