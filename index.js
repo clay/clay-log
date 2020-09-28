@@ -2,13 +2,7 @@
 
 var pino = require('pino'), // Can be overwritten for testing
   logger, // Will be overwritten during setup
-  v8;
-
-try {
-  v8 = require(require.resolve('v8'));
-} catch (err) {
-  v8 = null;
-}
+  plugins;
 
 /**
  * allow passing in a different output to stream to
@@ -27,7 +21,7 @@ function getOutput(args) {
  */
 function getPrettyPrint(args) {
   if (!process.versions || !process.versions.node) {
-    return false;  // No pretty logging on the client-side.
+    return false; // No pretty logging on the client-side.
   } else if (args.pretty === true || args.pretty === false) {
     return args.pretty;
   } else if (process.env.CLAY_LOG_PRETTY) {
@@ -48,13 +42,23 @@ function checkArgs(args) {
 }
 
 /**
- * enrich the log metadata with additional context about memory use,
- * this may be useful for tracking memory leaks.
- * @param {Object} data
- * @return {Object}
+ * Returns the absolute path to an additional directory containing clay-log plugins.
+ *
+ * @param  {string} dirname: The absolute or relative directory name.
+ * @returns {?string} A string containing an FS path or null.
  */
-function addHeap(data) {
-  return v8 ? Object.assign(data, v8.getHeapStatistics()) : data;
+function resolvePluginPath(dirname) {
+  if (!dirname) {
+    return null;
+  }
+
+  const path = require('path');
+  const absPath = path.isAbsolute(dirname)
+    ? dirname
+    : path.join(process.cwd(), dirname);
+
+  // This will normalize the path to ensure it never includes trailing slashes.
+  return absPath.replace(/\/+$/, '');
 }
 
 /**
@@ -95,6 +99,43 @@ function init(args) {
 }
 
 /**
+ * Initialize logger plugins.
+ * Accepts a comma-delimited list of logging plugins to load and
+ * composes them together to return a single function applying all plugins.
+ *
+ * @return {function}
+ */
+function initPlugins() {
+  const CLAY_LOG_PLUGINS = process.env.CLAY_LOG_PLUGINS || '';
+  const CLAY_LOG_PLUGINS_PATH = resolvePluginPath(process.env.CLAY_LOG_PLUGINS_PATH);
+  const PATHS = [CLAY_LOG_PLUGINS_PATH, './plugins'].filter(x => !!x);
+
+  const modules = CLAY_LOG_PLUGINS
+    .split(',')
+    .map(module => module.trim())
+    .filter(module => !!module)
+    .filter(module => module[0] != '_') // "_" is used to reserve the private namespace.
+    .map((module) => {
+      for (let i = 0; i < PATHS.length; ++i) {
+        try {
+          return require(`${PATHS[i]}/${module}`);
+        } catch (err) {
+          logger.error(`Could not locate clay-log plugin ${module}.`);
+        }
+      }
+    })
+    .filter(module => !!module);
+
+  if (modules.length == 0) {
+    return (x) => x;
+  } else if (modules.length == 1) {
+    return modules[0];
+  } else {
+    return modules.reduce((a, b) => (...args) => b(a(...args)));
+  }
+}
+
+/**
  * Return a new logging instance with associated metadata
  * on each log line
  *
@@ -123,6 +164,10 @@ function meta(options, logInstance) {
  * @return {Function}
  */
 function log(instanceLog) {
+  if (!plugins) {
+    instanceLog = initPlugins()(instanceLog);
+  }
+
   return function (level, msg, data) {
     data = data || {};
 
@@ -138,11 +183,6 @@ function log(instanceLog) {
 
     // Assign the _label
     data._label = level.toUpperCase();
-
-    // Include heap info if configured.
-    if (process.env.CLAY_LOG_HEAP === '1') {
-      data = addHeap(data);
-    }
 
     // Log it
     instanceLog[level](data, msg);
@@ -173,3 +213,4 @@ module.exports.getLogger = getLogger;
 // For testing
 module.exports.log = log;
 module.exports.setLogger = setLogger;
+module.exports.resolvePluginPath = resolvePluginPath;

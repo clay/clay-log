@@ -132,19 +132,53 @@ This property on the output log message is meant to make the logs more human sea
 
 | **Config Value**        | **Decription**                                     |
 | ----------------------- | -------------------------------------------------- |
-| `CLAY_LOG_HEAP`         | Set to '1' to enable heap logging.                 |
+| `LOG`                   | The minimum log level to log `trace,debug,info,warn,error`. [Default: `info`] |
 | `CLAY_LOG_PRETTY`       | Set to a 'truthy' value to enable pretty-printing. |
+| `CLAY_LOG_PLUGINS`      | Comma-delimited list of plug-ins to enabled. Plug-ins are applied in the order listed. |
+| `CLAY_LOG_PLUGINS_PATH` | Absolute path (or path relative to the CWD) for directory containing additional plug-ins. |
 
+
+#### Pretty Printing
+
+If you don't pass in a `pretty` property, pretty printing will controlled by the `CLAY_LOG_PRETTY` environment variable. The logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
+
+
+## Plug-ins
+
+A "plug-in" for `clay-log` is a wrapper function that is executed just before `pino.<level>`.
+
+Plug-ins can be used to:
+
+* Rename keys in JSON message.
+* Manipulate values in a JSON message.
+* Provide additional data in a JSON message.
+* Take additional action based on log level or other message attributes.
+
+An empty or unset value for `CLAY_LOG_PLUGINS` will disable plugins (the default).
+
+[Additional plug-ins](#writing-custom-plug-ins) can be loaded from `CLAY_LOG_PLUGINS_PATH`.
+
+:warning: :warning: :warning:
+
+* As plug-in code is potentially executed for every message logged, there is a [performance penalty](https://github.com/clay/clay-log/pull/16) to using them. :warning:
+* Plug-ins will only execute on log levels greater-then-or-equal-to what is set in `LOG=`.
+* Plug-ins from `CLAY_LOG_PLUGINS_PATH` will take priority over core plug-ins, be mindful of any naming conflicts.
+* If a plug-in specified in `CLAY_LOG_PLUGINS` is not found a warning message will be logged but application execution will not halt.
+
+### Core Plug-ins
 
 #### Heap Logging
 
-If `CLAY_LOG_HEAP` is set to "1" the following additional heap statistics will
+If `CLAY_LOG_PLUGINS` includes "heap" the following additional heap statistics will
 be included:
+
 ```json
 {
     "does_zap_garbage": 0,
     "heap_size_limit": 0,
     "malloced_memory": 0,
+    "number_of_detatched_contexts": 0,
+    "number_of_native_contexts": 0,
     "peak_malloced_memory": 0,
     "total_available_size": 0,
     "total_heap_size": 0,
@@ -154,6 +188,71 @@ be included:
 }
 ```
 
-#### Pretty Printing
+#### Sentry Reporting
 
-If you don't pass in a `pretty` property, pretty printing will controlled by the `CLAY_LOG_PRETTY` environment variable. The logs will be printed in human readable form. Otherwise they will be regular PinoJS JSON strings.
+If `CLAY_LOG_PLUGINS` includes "sentry" all `error` level logs will be reported to Sentry.
+
+:warning: This plug-in requires `@sentry/node` to be installed as a peer dependency and `SENTRY_DSN` to be set as an environment variable.
+
+### Writing Core Plug-Ins
+
+A plug-in is a wrapper function that accepts two arguments:
+
+* `data`: The extra context object that will be included in a log.
+* `msg`: The string summary of the log message.
+
+A plug-in can be used to enhance `data` with additional context or to take additional
+actions (like reporting errors to another service).
+
+Here is an example plug-in called `env` that will add the `NODE_ENV` to every log line with
+the `warn` or `error` level:
+
+```js
+# ./plugins/env.js
+
+// This utility should be used in all plug-ins. It provides an abstraction
+// around the process used to wrap functions.
+const { wrap } = require('./_utils');
+
+// This is where your plug-in code will be defined. Anything in this block is
+// executed **before** clay-log logs the message.
+function wrapper(data, msg) {
+    data.env = process.env.NODE_ENV;
+}
+
+// The export of a plug-in will always use the format `wrap(<plug-in-func>, [<levels>])`.
+// Omitting `[<levels>]` will apply the plug-in to all active log-levels.
+module.exports = wrap(wrapper, ['warn', 'error']);
+```
+
+### Writing Custom Plug-Ins
+
+A "custom" plug-in is a clay-log extension that lives outside of the `clay-log` project.
+Use a custom plug-in when extending or modifying log data with needs that are specific
+to your use-case but not useful for a broader audience.
+
+To write a custom plugin:
+
+1. Designate where you will store your plug-ins in your project, eg. `./utils/clay-log-plugins`.
+2. Set the `CLAY_LOG_PLUGINS_PATH` environment variable to `./utils/clay-log-plugins`.
+3. Write your plug-in code.
+
+```js
+# ./utils/clay-log-plugins/rename.js
+
+// The utility wrapper import path changes a bit when developing a custom plug-in.
+const { wrap } = require('clay-log/plugins/_utils');
+
+// This is where your plug-in code will be defined. Anything in this block is
+// executed **before** clay-log logs the message.
+function wrapper(data, msg) {
+    data.message = data.msg;
+    delete data['msg'];
+}
+
+// The export of a plug-in will always use the format `wrap(<plug-in-func>, [<levels>])`.
+// Omitting `[<levels>]` will apply the plug-in to all active log-levels.
+module.exports = wrap(wrapper, ['warn', 'error']);
+```
+
+4. Set `CLAY_LOG_PLUGINS=rename` (or whatever custom plug-in names you've used).
