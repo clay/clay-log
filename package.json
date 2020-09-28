@@ -39,5 +39,10 @@
   },
   "peerDependencies": {
     "@sentry/node": "^5.23.0"
+  },
+  "peerDependenciesMeta": {
+    "@sentry/node": {
+      "optional": true
+    }
   }
 }
