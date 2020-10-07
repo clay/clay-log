@@ -1,5 +1,9 @@
 'use strict';
 
+const isNode = typeof process !== 'undefined'
+  && process.versions != null
+  && process.versions.node != null;
+
 var pino = require('pino'), // Can be overwritten for testing
   logger, // Will be overwritten during setup
   plugins;
@@ -164,7 +168,7 @@ function meta(options, logInstance) {
  * @return {Function}
  */
 function log(instanceLog) {
-  if (!plugins) {
+  if (isNode && !plugins) {
     instanceLog = initPlugins()(instanceLog);
   }
 

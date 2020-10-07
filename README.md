@@ -164,6 +164,7 @@ An empty or unset value for `CLAY_LOG_PLUGINS` will disable plugins (the default
 * Plug-ins will only execute on log levels greater-then-or-equal-to what is set in `LOG=`.
 * Plug-ins from `CLAY_LOG_PLUGINS_PATH` will take priority over core plug-ins, be mindful of any naming conflicts.
 * If a plug-in specified in `CLAY_LOG_PLUGINS` is not found a warning message will be logged but application execution will not halt.
+* Plug-ins are only supported **server-side** at the moment, they will not be loaded on the client.
 
 ### Core Plug-ins
 
