@@ -166,7 +166,7 @@ describe(dirname, function () {
 
       log('info', 'message', data);
       sinon.assert.calledOnce(fakeLogInstance.info);
-      sinon.assert.calledWith(fakeLogInstance.info, data, 'message');
+      sinon.assert.calledWith(fakeLogInstance.info, { _label: 'INFO', some: 'data' }, 'message');
     });
 
 
@@ -219,6 +219,16 @@ describe(dirname, function () {
       log('info', 'message', data);
       sinon.assert.calledOnce(fakeLogInstance.info._original);
       sinon.assert.calledWith(fakeLogInstance.info._original, expected, 'message');
+    });
+
+    it('does not mutate the object passed to the logger', function () {
+      process.env.CLAY_LOG_PLUGINS = 'heap';
+      const fakeLogInstance = createFakeLogger()(),
+        log = fn(fakeLogInstance),
+        data = { some: 'data' };
+
+      log('info', 'message', data);
+      expect(data).to.deep.equal({ some: 'data' });
     });
 
     it('doesn\'t log memory usage if CLAY_LOG_PLUGINS does not contain "heap"', function () {
