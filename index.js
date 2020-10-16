@@ -172,8 +172,8 @@ function log(instanceLog) {
     instanceLog = initPlugins()(instanceLog);
   }
 
-  return function (level, msg, data) {
-    data = data || {};
+  return function (level, msg, data = {}) {
+    data = Object.assign({}, data);
 
     if (level instanceof Error) {
       msg = level;
