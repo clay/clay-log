@@ -104,6 +104,31 @@ The arguments are in the following order:
 2. Message (String)
 3. Accompanying log information (Object)
 
+### Safety Considerations :warning:
+
+The safest way to use the third position argument (`data`) is to wrap an object
+rather than pass an object directly. The object provided should have enumerable properties.
+
+Passing an object directly may result in a thrown error (if it's not really an object).
+```js
+const obj = 'string';
+log('info', 'this is unsafe', obj);  // throws
+```
+
+Passing an object directly may result in mutation. Be mindful of this when utilizing plug-ins.
+```js
+const obj = { key: 'value' };
+log('info', 'this is unsafe', obj);
+obj._label // 'INFO'
+```
+
+These are safer ways to provide the `data` argument.
+```js
+log('info', 'this is safer', { obj });
+log('info', 'this is safer', { ...obj });
+log('error', 'this is safer', { stack: err.stack });
+```
+
 ### Setting Minimum Log Level
 
 For production instances it may not be necessary to log the same messages you do in dev environments. By default, Clay Log will only display `info` and above level logs, but this can be configured with an environment variable. Set `process.env.LOG` to a [corresponding log level](#usage) and that will be the minimum level that appears.

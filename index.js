@@ -1,7 +1,6 @@
 'use strict';
 
-const cloneDeep = require('lodash.clonedeep'),
-  isNode = typeof process !== 'undefined'
+const isNode = typeof process !== 'undefined'
   && process.versions != null
   && process.versions.node != null;
 
@@ -173,8 +172,8 @@ function log(instanceLog) {
     instanceLog = initPlugins()(instanceLog);
   }
 
-  return function (level, msg, data = {}) {
-    data = cloneDeep(data);
+  return function (level, msg, data) {
+    data = data || {};
 
     if (level instanceof Error) {
       msg = level;
