@@ -1,6 +1,6 @@
 {
   "name": "clay-log",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "An isomorphic logging module for Clay projects",
   "main": "index.js",
   "scripts": {
@@ -36,13 +36,5 @@
     "istanbul": "^0.4.5",
     "mocha": "^5.2.0",
     "sinon": "^3.3.0"
-  },
-  "peerDependencies": {
-    "@sentry/node": "^5.23.0"
-  },
-  "peerDependenciesMeta": {
-    "@sentry/node": {
-      "optional": true
-    }
   }
 }
