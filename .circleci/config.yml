@@ -28,11 +28,13 @@ jobs:
       - run: npm ci
       - run: npm test
 
-workflows:
-  version: 2
-  test:
-    jobs:
-      - test_node_10:
-          <<: *filter_all
-      - test_node_12:
-          <<: *filter_all
+# circleCI is fully disabled, commenting this, so we can bi-pass the PRs checks
+# SRE is going to migrate these settings to GHA
+#workflows:
+#  version: 2
+#  test:
+#    jobs:
+#      - test_node_10:
+#          <<: *filter_all
+#      - test_node_12:
+#          <<: *filter_all
