@@ -69,10 +69,13 @@ function resolvePluginPath(dirname) {
  * Initialize the logger.
  *
  * @param  {Object} args
+ * @param  {string} args.name
+ * @param  {boolean} args.omitHost
+ * @param  {object} args.meta
  * @return {Function}
  */
 function init(args) {
-  var output, stream, pretty, name, meta;
+  let output, stream, pretty, name, meta, omitHost;
 
   checkArgs(args);
 
@@ -80,6 +83,7 @@ function init(args) {
   stream = getOutput(args);
   pretty = getPrettyPrint(args);
   name = args.name;
+  omitHost = args.omitHost || false;
   meta = args.meta || undefined;
 
   if (pretty) {
@@ -91,6 +95,7 @@ function init(args) {
   // level is set via an env var called `LOG`
   logger = pino({
     name: name,
+    base: omitHost ? { pid: process.pid } : undefined,
     level: process.env.LOG || 'info'
   }, output);
 
