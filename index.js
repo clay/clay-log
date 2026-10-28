@@ -9,6 +9,9 @@ const isError = require('./is-error');
 // How many `cause`s to follow below the Error that was logged. Matches the limit Sentry uses.
 const MAX_CAUSES = 5;
 
+// The names a subclass inherits when it doesn't set its own.
+const BUILT_IN_ERRORS = ['Error', 'EvalError', 'RangeError', 'ReferenceError', 'SyntaxError', 'TypeError', 'URIError', 'AggregateError'];
+
 // The properties of an Error that are logged when it has them: what Node adds to system
 // errors (`ENOENT` and its `errno`, `syscall`, `path`) and what HTTP clients add (`status`).
 // Others are left out on purpose, since an Error can carry a whole request or response.
@@ -19,20 +22,19 @@ var pino = require('pino'), // Can be overwritten for testing
   plugins;
 
 /**
- * The name of an Error's type. A subclass that doesn't set `name`
- * inherits 'Error', so report its class name instead.
+ * The name of an Error's type. A subclass that doesn't set its own `name`
+ * inherits the one of the built-in it extends ('Error', 'TypeError', ...),
+ * so report its class name instead. A `name` that was set on the Error, or on
+ * its class, is kept.
  *
  * @param  {Error} err
  * @return {string}
  */
 function errorKind(err) {
-  const className = err.constructor && err.constructor.name;
+  const className = err.constructor && err.constructor.name,
+    inherited = !Object.prototype.hasOwnProperty.call(err, 'name') && BUILT_IN_ERRORS.indexOf(err.name) !== -1;
 
-  if (err.name === 'Error' && className) {
-    return className;
-  }
-
-  return err.name || className || 'Error';
+  return inherited && className ? className : err.name || className || 'Error';
 }
 
 /**

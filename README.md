@@ -168,7 +168,7 @@ Each of these adds an `error` object to the log line that describes the Error:
 ```
 
 * `kind`, `message` and `stack` are the attribute names [Datadog Error Tracking](https://docs.datadoghq.com/error_tracking/) looks for under `error.*`.
-* `kind` is the Error's `name`. A subclass that doesn't set its own `name` is reported by its class name.
+* `kind` is the Error's `name`. A subclass that doesn't set its own `name`, whether it extends `Error` or a built-in like `TypeError`, is reported by its class name.
 * `code` is there when the Error has one, like `ENOENT`.
 * `cause` follows [`error.cause`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error/cause), for up to five causes. `new Error('message', { cause })` sets it.
 * An `error` that isn't an `Error` is logged as it was passed.

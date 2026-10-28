@@ -470,6 +470,29 @@ describe(dirname, function () {
       expect(fn(new NotFoundError('issue!')).kind).to.equal('NotFoundError');
     });
 
+    it('uses the class name for a subclass of a built-in error that does not set its own name', function () {
+      class ValidationError extends TypeError {}
+      class LimitError extends RangeError {}
+
+      expect(fn(new ValidationError('issue!')).kind).to.equal('ValidationError');
+      expect(fn(new LimitError('issue!')).kind).to.equal('LimitError');
+    });
+
+    it('uses the name a class or its Errors set, whatever the class is called', function () {
+      class SetInConstructor extends TypeError {
+        constructor(message) {
+          super(message);
+          this.name = 'FromConstructor';
+        }
+      }
+      class SetOnPrototype extends Error {}
+
+      SetOnPrototype.prototype.name = 'FromPrototype';
+
+      expect(fn(new SetInConstructor('issue!')).kind).to.equal('FromConstructor');
+      expect(fn(new SetOnPrototype('issue!')).kind).to.equal('FromPrototype');
+    });
+
     it('uses the name an Error sets for itself', function () {
       const err = new Error('issue!');
 
