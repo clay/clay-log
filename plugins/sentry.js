@@ -3,6 +3,7 @@
 const Sentry = require('@sentry/node');
 
 const { wrap } = require('./_utils');
+const isError = require('../is-error');
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -41,11 +42,12 @@ function extraFor(data, err) {
  * @param {string|Error} msg: The log message, or the Error itself.
  */
 function wrapper(data, msg) {
-  if (msg instanceof Error) {
+  if (isError(msg)) {
     Sentry.captureException(msg, { extra: extraFor(data, msg) });
-  } else if (data instanceof Object && data.error instanceof Error) {
-    // keep the log message too, since the exception has its own
-    Sentry.captureException(data.error, { extra: Object.assign({ msg }, extraFor(data, data.error)) });
+  } else if (data instanceof Object && isError(data.error)) {
+    // keep the log message too, since the exception has its own. It goes in last,
+    // so a `msg` in the data can't take its place.
+    Sentry.captureException(data.error, { extra: Object.assign({}, extraFor(data, data.error), { msg }) });
   } else {
     const err = new Error(msg);
     err.stack = data instanceof Object ? data.stack : '';

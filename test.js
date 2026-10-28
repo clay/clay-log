@@ -359,6 +359,40 @@ describe(dirname, function () {
       });
     });
 
+    it('keeps the log message in the extra data when the data has a `msg` of its own', function () {
+      process.env.CLAY_LOG_PLUGINS = 'sentry';
+      const Sentry = require('@sentry/node');
+
+      Sentry.captureException = sinon.stub();
+      const fakeLogInstance = createFakeLogger()(),
+        log = fn(fakeLogInstance),
+        fakeError = new Error('issue!');
+
+      log('error', 'could not do the thing', { error: fakeError, msg: 'something else' });
+      sinon.assert.calledWith(Sentry.captureException, fakeError, {
+        extra: { msg: 'could not do the thing', _label: 'ERROR' }
+      });
+    });
+
+    it('reports an Error from another realm to Sentry as it is, as the message or as `data.error`', function () {
+      process.env.CLAY_LOG_PLUGINS = 'sentry';
+      const Sentry = require('@sentry/node');
+
+      Sentry.captureException = sinon.stub();
+      const fakeLogInstance = createFakeLogger()(),
+        log = fn(fakeLogInstance),
+        asMessage = vm.runInNewContext('new TypeError("as the message")'),
+        asData = vm.runInNewContext('new TypeError("as data.error")');
+
+      log('error', asMessage, { some: 'data' });
+      log('error', 'could not do the thing', { error: asData });
+      sinon.assert.calledTwice(Sentry.captureException);
+      sinon.assert.calledWith(Sentry.captureException.firstCall, asMessage, { extra: { _label: 'ERROR', some: 'data' } });
+      sinon.assert.calledWith(Sentry.captureException.secondCall, asData, {
+        extra: { msg: 'could not do the thing', _label: 'ERROR' }
+      });
+    });
+
     it('runs multiple plugins CLAY_LOG_PLUGINS is set to "sentry,heap"', function () {
       process.env.CLAY_LOG_PLUGINS = 'sentry,heap';
       const Sentry = require('@sentry/node');

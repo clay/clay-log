@@ -4,6 +4,8 @@ const isNode = typeof process !== 'undefined'
   && process.versions != null
   && process.versions.node != null;
 
+const isError = require('./is-error');
+
 // How many `cause`s to follow below the Error that was logged. Matches the limit Sentry uses.
 const MAX_CAUSES = 5;
 
@@ -15,17 +17,6 @@ const ERROR_FIELDS = ['code', 'errno', 'syscall', 'path', 'status', 'statusCode'
 var pino = require('pino'), // Can be overwritten for testing
   logger, // Will be overwritten during setup
   plugins;
-
-/**
- * Whether a value is an Error, including one created in another realm
- * (an iframe or vm context), where `instanceof Error` is false.
- *
- * @param  {*} value
- * @return {Boolean}
- */
-function isError(value) {
-  return value instanceof Error || Object.prototype.toString.call(value) === '[object Error]';
-}
 
 /**
  * The name of an Error's type. A subclass that doesn't set `name`
