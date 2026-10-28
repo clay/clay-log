@@ -135,7 +135,7 @@ For production instances it may not be necessary to log the same messages you do
 
 ### Errors
 
-Want to be lazy? If you pass in an `Error` object as the only argument and everything will get formatted properly OR just pass an `Error` as a second argument and you'll be good.
+Want to be lazy? If you pass in an `Error` object as the only argument and everything will get formatted properly OR just pass an `Error` as a second argument and you'll be good. To log your own message, pass the `Error` as `data.error`.
 
 ```
 var loggingInstance = clayLog.init({
@@ -147,7 +147,35 @@ var loggingInstance = clayLog.init({
 
 loggingInstance(new Error('oh no!'));
 loggingInstance('error', new Error('oh no!'));
+loggingInstance('error', 'could not compose the page', { error: new Error('oh no!'), uri: 'site/_pages/abc' });
 ```
+
+Each of these adds an `error` object to the log line that describes the Error:
+
+```json
+{
+  "level": 50,
+  "msg": "could not compose the page",
+  "uri": "site/_pages/abc",
+  "error": {
+    "kind": "TypeError",
+    "message": "oh no!",
+    "stack": "TypeError: oh no!\n    at ...",
+    "code": "ECONNREFUSED",
+    "cause": { "kind": "Error", "message": "the Error that led to it", "stack": "..." }
+  }
+}
+```
+
+* `kind`, `message` and `stack` are the attribute names [Datadog Error Tracking](https://docs.datadoghq.com/error_tracking/) looks for under `error.*`.
+* `kind` is the Error's `name`. A subclass that doesn't set its own `name`, whether it extends `Error` or a built-in like `TypeError`, is reported by its class name.
+* `code` is there when the Error has one, like `ENOENT`.
+* `cause` follows [`error.cause`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error/cause), for up to five causes. `new Error('message', { cause })` sets it.
+* An `error` that isn't an `Error` is logged as it was passed.
+
+The `msg` of a logged `Error` is still `String(err)`, like `TypeError: oh no!`.
+
+When logging in a browser the `Error` is handed to the console as it is, so the console can show its stack.
 
 ## `_label` Property
 
@@ -218,14 +246,16 @@ be included:
 
 If `CLAY_LOG_PLUGINS` includes "sentry" all `error` level logs will be reported to Sentry.
 
+An `Error` that is logged (as the message, or as `data.error`) is sent to Sentry as the exception itself, so Sentry has its stack and its `cause` chain. The rest of the log data goes along as `extra`, and so does the log message when it differs from the Error. Logs without an `Error` are reported with a new `Error` made from the message, and `data.stack` as its stack.
+
 :warning: This plug-in requires `@sentry/node` to be installed as a peer dependency and `SENTRY_DSN` to be set as an environment variable.
 
 ### Writing Core Plug-Ins
 
 A plug-in is a wrapper function that accepts two arguments:
 
-* `data`: The extra context object that will be included in a log.
-* `msg`: The string summary of the log message.
+* `data`: The extra context object that will be included in a log. When an `Error` is logged it is in `data.error`.
+* `msg`: The string summary of the log message, or the `Error` itself when one was passed as the message.
 
 A plug-in can be used to enhance `data` with additional context or to take additional
 actions (like reporting errors to another service).
