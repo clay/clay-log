@@ -4,9 +4,76 @@ const isNode = typeof process !== 'undefined'
   && process.versions != null
   && process.versions.node != null;
 
+// How many `cause`s to follow below the Error that was logged. Matches the limit Sentry uses.
+const MAX_CAUSES = 5;
+
 var pino = require('pino'), // Can be overwritten for testing
   logger, // Will be overwritten during setup
   plugins;
+
+/**
+ * Whether a value is an Error, including one created in another realm
+ * (an iframe or vm context), where `instanceof Error` is false.
+ *
+ * @param  {*} value
+ * @return {Boolean}
+ */
+function isError(value) {
+  return value instanceof Error || Object.prototype.toString.call(value) === '[object Error]';
+}
+
+/**
+ * The name of an Error's type. A subclass that doesn't set `name`
+ * inherits 'Error', so report its class name instead.
+ *
+ * @param  {Error} err
+ * @return {string}
+ */
+function errorKind(err) {
+  const className = err.constructor && err.constructor.name;
+
+  if (err.name === 'Error' && className) {
+    return className;
+  }
+
+  return err.name || className || 'Error';
+}
+
+/**
+ * Describe an Error with plain fields that survive JSON. `kind`, `message`
+ * and `stack` are the names log aggregators read under `error.*` (Datadog
+ * Error Tracking, for one), and `cause` keeps the chain of errors that led
+ * to this one.
+ *
+ * @param  {Error} err
+ * @param  {Error[]} [seen]: errors already described, so a cycle can't recurse forever
+ * @return {Object}
+ */
+function serializeError(err, seen) {
+  const described = { kind: errorKind(err), message: err.message, stack: err.stack };
+
+  seen = (seen || []).concat(err);
+
+  if (err.code !== undefined) {
+    described.code = err.code;
+  }
+
+  if (isError(err.cause) && seen.length <= MAX_CAUSES && seen.indexOf(err.cause) === -1) {
+    described.cause = serializeError(err.cause, seen);
+  }
+
+  return described;
+}
+
+/**
+ * Pino serializer for the `error` key. Anything that isn't an Error is left alone.
+ *
+ * @param  {*} value
+ * @return {*}
+ */
+function errorSerializer(value) {
+  return isError(value) ? serializeError(value) : value;
+}
 
 /**
  * allow passing in a different output to stream to
@@ -96,7 +163,8 @@ function init(args) {
   logger = pino({
     name: name,
     base: omitHost ? { pid: process.pid } : undefined,
-    level: process.env.LOG || 'info'
+    level: process.env.LOG || 'info',
+    serializers: { error: errorSerializer }
   }, output);
 
   // If meta data was passed in for all logging, let's add it
@@ -163,11 +231,26 @@ function meta(options, logInstance) {
 }
 
 /**
+ * Put an Error that was passed as the message into the log data under
+ * `error`, where the serializer describes it. The data is copied rather
+ * than changed, so a data object reused across calls can't hold on to an old Error.
+ *
+ * @param  {Object} data
+ * @param  {*} msg
+ * @return {Object}
+ */
+function withError(data, msg) {
+  return isError(msg) && data.error === undefined ? Object.assign({}, data, { error: msg }) : data;
+}
+
+/**
  * Return an instance of a logger which is ready to be
  * used. Errors get logged as errors, otherwise you need to
  * call the appropriate level
  *
  * i.e. log('info', 'some message', { otherData: 1});
+ * i.e. log(new Error('something broke'));
+ * i.e. log('error', 'something broke', { error: err });
  *
  * @param  {Object} instanceLog
  * @return {Function}
@@ -180,7 +263,7 @@ function log(instanceLog) {
   return function (level, msg, data) {
     data = data || {};
 
-    if (level instanceof Error) {
+    if (isError(level)) {
       msg = level;
       level = 'error';
     }
@@ -189,6 +272,8 @@ function log(instanceLog) {
       instanceLog.error(new Error('level or msg arguments required'));
       return;
     }
+
+    data = withError(data, msg);
 
     // Assign the _label
     data._label = level.toUpperCase();
@@ -221,5 +306,6 @@ module.exports.getLogger = getLogger;
 
 // For testing
 module.exports.log = log;
+module.exports.serializeError = serializeError;
 module.exports.setLogger = setLogger;
 module.exports.resolvePluginPath = resolvePluginPath;

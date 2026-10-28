@@ -8,7 +8,9 @@ const sinon = require('sinon'),
   lib = require('./'),
   expect = require('chai').expect,
   { noop } = require('pino/lib/tools'),
-  semver = require('semver');
+  semver = require('semver'),
+  { Writable } = require('stream'),
+  vm = require('vm');
 
 describe(dirname, function () {
   const levels = {
@@ -179,7 +181,78 @@ describe(dirname, function () {
 
       log(fakeError);
       sinon.assert.calledOnce(fakeLogInstance.error);
-      sinon.assert.calledWith(fakeLogInstance.error, {_label: 'ERROR'}, fakeError);
+      sinon.assert.calledWith(fakeLogInstance.error, {_label: 'ERROR', error: fakeError}, fakeError);
+    });
+
+    it('puts an Error passed as the message in the data under `error`, next to the rest of the data', function () {
+      var fakeLogInstance = {
+          error: sinon.stub()
+        },
+        log = fn(fakeLogInstance),
+        fakeError = new Error('issue!');
+
+      log('error', fakeError, { uri: 'a/b' });
+      sinon.assert.calledWith(fakeLogInstance.error, {_label: 'ERROR', uri: 'a/b', error: fakeError}, fakeError);
+    });
+
+    it('does not change the data object when it adds the Error', function () {
+      var fakeLogInstance = {
+          error: sinon.stub()
+        },
+        log = fn(fakeLogInstance),
+        data = { uri: 'a/b' };
+
+      log('error', new Error('issue!'), data);
+      expect(data).to.deep.equal({ uri: 'a/b' });
+    });
+
+    it('does not carry an Error over to the next call that reuses the data object', function () {
+      var fakeLogInstance = {
+          error: sinon.stub()
+        },
+        log = fn(fakeLogInstance),
+        data = {},
+        first = new Error('first'),
+        second = new Error('second');
+
+      log('error', first, data);
+      log('error', second, data);
+      expect(fakeLogInstance.error.firstCall.args[0].error).to.equal(first);
+      expect(fakeLogInstance.error.secondCall.args[0].error).to.equal(second);
+    });
+
+    it('leaves an Error that is passed as `data.error` alone', function () {
+      var fakeLogInstance = {
+          error: sinon.stub()
+        },
+        log = fn(fakeLogInstance),
+        fakeError = new Error('issue!');
+
+      log('error', 'message', { error: fakeError });
+      sinon.assert.calledWith(fakeLogInstance.error, {_label: 'ERROR', error: fakeError}, 'message');
+    });
+
+    it('does not replace a `data.error` that is already there', function () {
+      var fakeLogInstance = {
+          error: sinon.stub()
+        },
+        log = fn(fakeLogInstance),
+        fakeError = new Error('issue!');
+
+      log('error', fakeError, { error: 'already described' });
+      sinon.assert.calledWith(fakeLogInstance.error, {_label: 'ERROR', error: 'already described'}, fakeError);
+    });
+
+    it('treats an Error from another realm as an error', function () {
+      var fakeLogInstance = {
+          error: sinon.stub()
+        },
+        log = fn(fakeLogInstance),
+        foreignError = vm.runInNewContext('new TypeError("other realm")');
+
+      expect(foreignError instanceof Error).to.equal(false);
+      log(foreignError);
+      sinon.assert.calledWith(fakeLogInstance.error, {_label: 'ERROR', error: foreignError}, foreignError);
     });
 
     it('logs an error if no level or msg are passed in', function () {
@@ -256,6 +329,36 @@ describe(dirname, function () {
       sinon.assert.calledWith(Sentry.captureException, sinon.match.has('stack'), sinon.match.object);
     });
 
+    it('reports an Error message to Sentry as the exception, without repeating it in the extra data', function () {
+      process.env.CLAY_LOG_PLUGINS = 'sentry';
+      const Sentry = require('@sentry/node');
+
+      Sentry.captureException = sinon.stub();
+      const fakeLogInstance = createFakeLogger()(),
+        log = fn(fakeLogInstance),
+        fakeError = new Error('issue!');
+
+      log('error', fakeError, { some: 'data' });
+      sinon.assert.calledOnce(Sentry.captureException);
+      sinon.assert.calledWith(Sentry.captureException, fakeError, { extra: { _label: 'ERROR', some: 'data' } });
+    });
+
+    it('reports `data.error` to Sentry as the exception, and keeps the log message', function () {
+      process.env.CLAY_LOG_PLUGINS = 'sentry';
+      const Sentry = require('@sentry/node');
+
+      Sentry.captureException = sinon.stub();
+      const fakeLogInstance = createFakeLogger()(),
+        log = fn(fakeLogInstance),
+        fakeError = new Error('issue!');
+
+      log('error', 'could not do the thing', { error: fakeError, some: 'data' });
+      sinon.assert.calledOnce(Sentry.captureException);
+      sinon.assert.calledWith(Sentry.captureException, fakeError, {
+        extra: { msg: 'could not do the thing', _label: 'ERROR', some: 'data' }
+      });
+    });
+
     it('runs multiple plugins CLAY_LOG_PLUGINS is set to "sentry,heap"', function () {
       process.env.CLAY_LOG_PLUGINS = 'sentry,heap';
       const Sentry = require('@sentry/node');
@@ -310,6 +413,162 @@ describe(dirname, function () {
         fs.rmdirSync(dirname, { recursive: true });
         done();
       });
+    });
+  });
+
+  describe('serializeError', function () {
+    const fn = lib[this.title];
+
+    it('describes the kind, message and stack of an Error', function () {
+      const err = new TypeError('issue!'),
+        described = fn(err);
+
+      expect(described.kind).to.equal('TypeError');
+      expect(described.message).to.equal('issue!');
+      expect(described.stack).to.equal(err.stack);
+      expect(described).to.not.have.property('cause');
+      expect(described).to.not.have.property('code');
+    });
+
+    it('uses the class name for a subclass that does not set its own name', function () {
+      class NotFoundError extends Error {}
+
+      expect(fn(new NotFoundError('issue!')).kind).to.equal('NotFoundError');
+    });
+
+    it('uses the name an Error sets for itself', function () {
+      const err = new Error('issue!');
+
+      err.name = 'CustomError';
+      expect(fn(err).kind).to.equal('CustomError');
+    });
+
+    it('includes the code', function () {
+      const err = new Error('issue!');
+
+      err.code = 'ENOENT';
+      expect(fn(err).code).to.equal('ENOENT');
+    });
+
+    it('describes the chain of causes', function () {
+      const root = new RangeError('root'),
+        middle = new Error('middle'),
+        top = new Error('top');
+
+      middle.cause = root;
+      top.cause = middle;
+      const described = fn(top);
+
+      expect(described.cause.message).to.equal('middle');
+      expect(described.cause.cause.kind).to.equal('RangeError');
+      expect(described.cause.cause.message).to.equal('root');
+      expect(described.cause.cause).to.not.have.property('cause');
+    });
+
+    it('follows five causes at most', function () {
+      let err = new Error('0'),
+        described,
+        depth = 0;
+
+      for (let i = 1; i < 9; i++) {
+        const next = new Error(String(i));
+
+        next.cause = err;
+        err = next;
+      }
+
+      described = fn(err);
+      while (described.cause) {
+        depth++;
+        described = described.cause;
+      }
+
+      expect(depth).to.equal(5);
+    });
+
+    it('stops when causes point back at each other', function () {
+      const a = new Error('a'),
+        b = new Error('b');
+
+      a.cause = b;
+      b.cause = a;
+      const described = fn(a);
+
+      expect(described.cause.message).to.equal('b');
+      expect(described.cause).to.not.have.property('cause');
+    });
+
+    it('leaves out a cause that is not an Error', function () {
+      const err = new Error('issue!');
+
+      err.cause = 'because';
+      expect(fn(err)).to.not.have.property('cause');
+    });
+
+    it('describes an Error from another realm', function () {
+      const described = fn(vm.runInNewContext('new TypeError("other realm")'));
+
+      expect(described.kind).to.equal('TypeError');
+      expect(described.message).to.equal('other realm');
+    });
+  });
+
+  describe('the log line', function () {
+    let lines, log;
+
+    beforeEach(function () {
+      lines = [];
+      lib.setLogger(require('pino'));
+      log = lib.init({
+        name: 'test',
+        output: new Writable({
+          write(chunk, encoding, done) {
+            lines.push(JSON.parse(chunk.toString()));
+            done();
+          }
+        })
+      });
+    });
+
+    it('describes an Error passed as the message', function () {
+      const cause = new Error('db down'),
+        err = new TypeError('compose failed');
+
+      cause.code = 'ECONNREFUSED';
+      err.cause = cause;
+      log('error', err, { uri: 'a/b' });
+
+      expect(lines).to.have.length(1);
+      expect(lines[0].msg).to.equal('TypeError: compose failed');
+      expect(lines[0].uri).to.equal('a/b');
+      expect(lines[0].error.kind).to.equal('TypeError');
+      expect(lines[0].error.message).to.equal('compose failed');
+      expect(lines[0].error.stack).to.equal(err.stack);
+      expect(lines[0].error.cause.message).to.equal('db down');
+      expect(lines[0].error.cause.code).to.equal('ECONNREFUSED');
+    });
+
+    it('describes an Error passed on its own', function () {
+      log(new Error('issue!'));
+
+      expect(lines[0].level).to.equal(50);
+      expect(lines[0].error.message).to.equal('issue!');
+    });
+
+    it('describes an Error passed as `data.error`, next to its own message', function () {
+      log('error', 'could not compose the page', { error: new Error('db down') });
+
+      expect(lines[0].msg).to.equal('could not compose the page');
+      expect(lines[0].error.message).to.equal('db down');
+      expect(lines[0].error.stack).to.contain('db down');
+    });
+
+    it('leaves an `error` that is not an Error as it was logged', function () {
+      log('error', 'message', { error: 'a string' });
+      log('error', 'message', { error: { some: 'data' } });
+
+      expect(lines[0].error).to.equal('a string');
+      expect(lines[1].error).to.deep.equal({ some: 'data' });
     });
   });
 
