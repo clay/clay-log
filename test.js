@@ -443,11 +443,36 @@ describe(dirname, function () {
       expect(fn(err).kind).to.equal('CustomError');
     });
 
-    it('includes the code', function () {
+    it('includes the code, and the system and HTTP fields an Error has', function () {
       const err = new Error('issue!');
 
       err.code = 'ENOENT';
-      expect(fn(err).code).to.equal('ENOENT');
+      err.errno = -2;
+      err.syscall = 'open';
+      err.path = 'public/media/podcast.svg';
+      err.status = 404;
+      err.statusCode = 404;
+
+      expect(fn(err)).to.include({
+        code: 'ENOENT',
+        errno: -2,
+        syscall: 'open',
+        path: 'public/media/podcast.svg',
+        status: 404,
+        statusCode: 404
+      });
+    });
+
+    it('leaves out other properties, and fields that are not a string, number or boolean', function () {
+      const err = new Error('issue!');
+
+      err.config = { headers: { Authorization: 'Bearer secret' } };
+      err.response = '{"a long": "response body"}';
+      err.status = { not: 'a number' };
+      err.path = ['not', 'a', 'string'];
+      const described = fn(err);
+
+      expect(Object.keys(described).sort()).to.deep.equal(['kind', 'message', 'stack']);
     });
 
     it('describes the chain of causes', function () {
@@ -546,6 +571,25 @@ describe(dirname, function () {
       expect(lines[0].error.stack).to.equal(err.stack);
       expect(lines[0].error.cause.message).to.equal('db down');
       expect(lines[0].error.cause.code).to.equal('ECONNREFUSED');
+    });
+
+    it('keeps what a Node system error says about the file, like it did before', function () {
+      let err;
+
+      try {
+        fs.readFileSync(path.join(__dirname, 'does-not-exist.svg'));
+      } catch (e) {
+        err = e;
+      }
+      log('error', 'Failure to read the file.', { error: err });
+
+      expect(lines[0].msg).to.equal('Failure to read the file.');
+      expect(lines[0].error.kind).to.equal('Error');
+      expect(lines[0].error.message).to.contain('ENOENT');
+      expect(lines[0].error.code).to.equal('ENOENT');
+      expect(lines[0].error.errno).to.equal(err.errno);
+      expect(lines[0].error.syscall).to.equal('open');
+      expect(lines[0].error.path).to.equal(err.path);
     });
 
     it('describes an Error passed on its own', function () {

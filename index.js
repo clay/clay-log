@@ -7,6 +7,11 @@ const isNode = typeof process !== 'undefined'
 // How many `cause`s to follow below the Error that was logged. Matches the limit Sentry uses.
 const MAX_CAUSES = 5;
 
+// The properties of an Error that are logged when it has them: what Node adds to system
+// errors (`ENOENT` and its `errno`, `syscall`, `path`) and what HTTP clients add (`status`).
+// Others are left out on purpose, since an Error can carry a whole request or response.
+const ERROR_FIELDS = ['code', 'errno', 'syscall', 'path', 'status', 'statusCode'];
+
 var pino = require('pino'), // Can be overwritten for testing
   logger, // Will be overwritten during setup
   plugins;
@@ -40,6 +45,16 @@ function errorKind(err) {
 }
 
 /**
+ * Whether a value is a string, number or boolean.
+ *
+ * @param  {*} value
+ * @return {Boolean}
+ */
+function isPlain(value) {
+  return ['string', 'number', 'boolean'].indexOf(typeof value) !== -1;
+}
+
+/**
  * Describe an Error with plain fields that survive JSON. `kind`, `message`
  * and `stack` are the names log aggregators read under `error.*` (Datadog
  * Error Tracking, for one), and `cause` keeps the chain of errors that led
@@ -54,9 +69,11 @@ function serializeError(err, seen) {
 
   seen = (seen || []).concat(err);
 
-  if (err.code !== undefined) {
-    described.code = err.code;
-  }
+  ERROR_FIELDS.forEach((field) => {
+    if (isPlain(err[field])) {
+      described[field] = err[field];
+    }
+  });
 
   if (isError(err.cause) && seen.length <= MAX_CAUSES && seen.indexOf(err.cause) === -1) {
     described.cause = serializeError(err.cause, seen);
